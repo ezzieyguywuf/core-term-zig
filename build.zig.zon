@@ -1,0 +1,15 @@
+.{
+    .name = .core_term,
+    .fingerprint = 0x97ea24b83df57242,
+    .version = "0.0.1",
+    .dependencies = .{
+        .zig_wayland = .{
+            .path = "../zig-wayland",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
