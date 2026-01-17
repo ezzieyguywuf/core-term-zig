@@ -111,9 +111,17 @@ pub fn draw_demo_pattern(width_px: i32, height_px: i32, time: f32, out_buffer: [
                     const fg_g_field = pf.Core.constant(c.fg_g);
                     const fg_b_field = pf.Core.constant(c.fg_b);
 
-                    var final_r_arr: [pf.LANES]f32 = @as([pf.LANES]f32, bg_r_field);
-                    var final_g_arr: [pf.LANES]f32 = @as([pf.LANES]f32, bg_g_field);
-                    var final_b_arr: [pf.LANES]f32 = @as([pf.LANES]f32, bg_b_field);
+                    const bg_r_arr: [pf.LANES]f32 = @as([pf.LANES]f32, bg_r_field);
+                    const bg_g_arr: [pf.LANES]f32 = @as([pf.LANES]f32, bg_g_field);
+                    const bg_b_arr: [pf.LANES]f32 = @as([pf.LANES]f32, bg_b_field);
+
+                    const fg_r_arr: [pf.LANES]f32 = @as([pf.LANES]f32, fg_r_field);
+                    const fg_g_arr: [pf.LANES]f32 = @as([pf.LANES]f32, fg_g_field);
+                    const fg_b_arr: [pf.LANES]f32 = @as([pf.LANES]f32, fg_b_field);
+
+                    var final_r_arr: [pf.LANES]f32 = bg_r_arr;
+                    var final_g_arr: [pf.LANES]f32 = bg_g_arr;
+                    var final_b_arr: [pf.LANES]f32 = bg_b_arr;
 
                     // Convert global pixel coordinates to local character cell coordinates
                     const local_x_arr: [pf.LANES]f32 = @as([pf.LANES]f32, x_p - pf.Core.constant(c.cell_pixel_x));
@@ -135,15 +143,14 @@ pub fn draw_demo_pattern(width_px: i32, height_px: i32, time: f32, out_buffer: [
                                 const is_pixel_set = (row_byte >> @as(u3, @intCast(font.FONT_WIDTH - 1 - font_col_idx))) & 0x01;
 
                                 if (is_pixel_set != 0) {
-                                    // Use array indexing for access
-                                    final_r_arr[lane_idx] = fg_r_field[lane_idx];
-                                    final_g_arr[lane_idx] = fg_g_field[lane_idx];
-                                    final_b_arr[lane_idx] = fg_b_field[lane_idx];
+                                    final_r_arr[lane_idx] = fg_r_arr[lane_idx];
+                                    final_g_arr[lane_idx] = fg_g_arr[lane_idx];
+                                    final_b_arr[lane_idx] = fg_b_arr[lane_idx];
                                     
                                     if (c.is_bold) {
-                                        final_r_arr[lane_idx] = @min(1.0, fg_r_field[lane_idx] * 1.2);
-                                        final_g_arr[lane_idx] = @min(1.0, fg_g_field[lane_idx] * 1.2);
-                                        final_b_arr[lane_idx] = @min(1.0, fg_b_field[lane_idx] * 1.2);
+                                        final_r_arr[lane_idx] = @min(1.0, fg_r_arr[lane_idx] * 1.2);
+                                        final_g_arr[lane_idx] = @min(1.0, fg_g_arr[lane_idx] * 1.2);
+                                        final_b_arr[lane_idx] = @min(1.0, fg_b_arr[lane_idx] * 1.2);
                                     }
                                 }
                             }
