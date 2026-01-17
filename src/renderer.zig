@@ -238,3 +238,101 @@ pub fn draw_demo_pattern(width_px: i32, height_px: i32, time: f32, out_buffer: [
         pf.evaluate(title_bar_painter.eval, title_bar_ctx, 0.0, @as(f32, @floatFromInt(y_px)), row_slice);
     }
 }
+
+pub fn draw_sphere_demo(width_px: i32, height_px: i32, time: f32, out_buffer: []u32) !void {
+    const w_f = @as(f32, @floatFromInt(width_px));
+    const h_f = @as(f32, @floatFromInt(height_px));
+
+    const Context = struct {
+        w: f32,
+        h: f32,
+        t: f32,
+    };
+    const ctx = Context{ .w = w_f, .h = h_f, .t = time };
+
+    const sphere_painter = struct {
+        pub fn eval(c: Context, x: pf.Field, y: pf.Field) struct { r: pf.Field, g: pf.Field, b: pf.Field, a: pf.Field } {
+            // UV coordinates (-1.0 to 1.0)
+            const uv_x = (x / pf.Core.constant(c.w)) * @as(pf.Field, @splat(2.0)) - @as(pf.Field, @splat(1.0));
+            const uv_y = (y / pf.Core.constant(c.h)) * @as(pf.Field, @splat(2.0)) - @as(pf.Field, @splat(1.0));
+            
+            // Correct aspect ratio
+            const aspect = c.w / c.h;
+            const u = uv_x * pf.Core.constant(aspect);
+            const v = uv_y;
+
+            // Animate sphere center
+            const center_x = @sin(pf.Core.constant(c.t)) * @as(pf.Field, @splat(0.5));
+            const center_y = @cos(pf.Core.constant(c.t * 1.3)) * @as(pf.Field, @splat(0.3));
+            
+            // Sphere SDF (2D circle essentially)
+            const radius: pf.Field = @splat(0.5);
+            const d_x = u - center_x;
+            const d_y = v - center_y;
+            const dist = pf.Core.sqrt(d_x * d_x + d_y * d_y) - radius;
+            
+            const mask = dist <= @as(pf.Field, @splat(0.0));
+            
+            // Shading (Fake 3D)
+            // Normal (simplified)
+            const n_x = d_x / radius;
+            const n_y = d_y / radius;
+            // Fake Z normal: sqrt(1 - x^2 - y^2)
+            const n_z_sq = @as(pf.Field, @splat(1.0)) - (n_x * n_x + n_y * n_y);
+            // Clamp to 0
+            const n_z = pf.Core.sqrt(@max(@as(pf.Field, @splat(0.0)), n_z_sq));
+
+            // Light direction (top-right)
+            const l_x: pf.Field = @splat(0.577);
+            const l_y: pf.Field = @splat(0.577);
+            const l_z: pf.Field = @splat(0.577);
+
+            // Diffuse: N dot L
+            const diff = @max(@as(pf.Field, @splat(0.0)), n_x * l_x + n_y * l_y + n_z * l_z);
+            
+            // Specular: reflect(L, N) dot V (view is 0,0,1)
+            // r = l - 2(n.l)n
+            // fast specular: pow(max(0, dot(R, V)), shininess)
+            // since V is 0,0,1, dot(R, V) is just R.z
+            // R = I - 2.0 * dot(N, I) * N  where I = -L
+            // Actually simpler: Blinn-Phong
+            // H = normalize(L + V). V=(0,0,1). H = normalize(0.577, 0.577, 1.577)
+            // H approx (0.3, 0.3, 0.9)
+            // spec = max(0, N dot H) ^ power
+            const h_x: pf.Field = @splat(0.32);
+            const h_y: pf.Field = @splat(0.32);
+            const h_z: pf.Field = @splat(0.89);
+            
+            const spec_base = @max(@as(pf.Field, @splat(0.0)), n_x * h_x + n_y * h_y + n_z * h_z);
+            const spec = spec_base * spec_base * spec_base * spec_base * spec_base; // pow 32 approx
+
+            // Chrome color
+            const base_r: pf.Field = @splat(0.7);
+            const base_g: pf.Field = @splat(0.7);
+            const base_b: pf.Field = @splat(0.8);
+
+            // Sky background (checkerboard?)
+            // uv_y gradient
+            const sky_r = @as(pf.Field, @splat(0.1)) + uv_y * @as(pf.Field, @splat(0.2));
+            const sky_g = @as(pf.Field, @splat(0.1)) + uv_y * @as(pf.Field, @splat(0.1));
+            const sky_b = @as(pf.Field, @splat(0.2));
+
+            // Combine
+            const sphere_r = base_r * (diff * @as(pf.Field, @splat(0.5)) + @as(pf.Field, @splat(0.2))) + spec;
+            const sphere_g = base_g * (diff * @as(pf.Field, @splat(0.5)) + @as(pf.Field, @splat(0.2))) + spec;
+            const sphere_b = base_b * (diff * @as(pf.Field, @splat(0.5)) + @as(pf.Field, @splat(0.2))) + spec;
+
+            const final_r = pf.Core.select(mask, sphere_r, sky_r);
+            const final_g = pf.Core.select(mask, sphere_g, sky_g);
+            const final_b = pf.Core.select(mask, sphere_b, sky_b);
+
+            return .{ .r = final_r, .g = final_g, .b = final_b, .a = @splat(1.0) };
+        }
+    };
+
+    for (0..@intCast(height_px)) |y_px| {
+        const row_offset = y_px * @as(usize, @intCast(width_px));
+        const row_slice = out_buffer[row_offset .. row_offset + @as(usize, @intCast(width_px))];
+        pf.evaluate(sphere_painter.eval, ctx, 0.0, @as(f32, @floatFromInt(y_px)), row_slice);
+    }
+}
