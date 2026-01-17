@@ -86,13 +86,13 @@ const RenderActor = struct {
                 // Trigger redraw logic if needed
             },
             .Resize => |dim| {
-                // Resize the client's window internally
+                // Resize the client's window internally (still dynamic)
                 self.client.width = dim.w;
                 self.client.height = dim.h;
-                // Resize the terminal grid based on character dimensions
-                const char_width_usize = @as(usize, renderer.CHAR_WIDTH);
-                const char_height_usize = @as(usize, renderer.CHAR_HEIGHT);
-                try self.terminal.resize(@as(usize, dim.w) / char_width_usize, @as(usize, dim.h) / char_height_usize);
+                // Temporarily hardcode terminal grid dimensions for resize
+                const new_term_width_chars: usize = 80;
+                const new_term_height_chars: usize = 25;
+                try self.terminal.resize(new_term_width_chars, new_term_height_chars);
             },
         }
     }
