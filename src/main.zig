@@ -31,13 +31,9 @@ const RenderActor = struct {
     pub fn init(allocator: std.mem.Allocator) !RenderActor {
         const client = try Client.init();
 
-        const client_width_f32 = client.width * 1.0;
+        const term_width_chars: usize = 80;
 
-        const client_height_f32 = client.height * 1.0;
-
-        const term_width_chars = @as(usize, client_width_f32 / renderer.CHAR_WIDTH);
-
-        const term_height_chars = @as(usize, client_height_f32 / renderer.CHAR_HEIGHT);
+        const term_height_chars: usize = 25;
 
         const term = try terminal_mod.Terminal.init(allocator, term_width_chars, term_height_chars); // Assuming fixed font size
 
