@@ -7,7 +7,7 @@ const font = @import("font.zig");
 pub const CHAR_WIDTH: f32 = @as(f32, font.FONT_WIDTH);
 pub const CHAR_HEIGHT: f32 = @as(f32, font.FONT_HEIGHT);
 
-pub fn draw_demo_pattern(width_px: i32, height_px: i32, time: f32, out_buffer: []u32, terminal_grid: *grid.Grid) !void {
+pub fn draw_demo_pattern(width_px: i32, height_px: i32, time: f32, out_buffer: []u32, terminal_grid: *grid.Grid, cursor_x: usize, cursor_y: usize) !void {
     _ = time; // Not used in this version
 
     // Background for areas outside the terminal
@@ -61,12 +61,13 @@ pub fn draw_demo_pattern(width_px: i32, height_px: i32, time: f32, out_buffer: [
             const pixel_y_start = @as(f32, @floatFromInt(row_idx)) * CHAR_HEIGHT;
 
             const is_cursor_cell = 
-                col_idx == terminal_grid.cursor_x and 
-                row_idx == terminal_grid.cursor_y;
+                col_idx == cursor_x and 
+                row_idx == cursor_y;
 
             var fg_color_val = cell.fg_color;
             var bg_color_val = cell.bg_color;
             var is_inverse_val = cell.is_inverse;
+
 
             if (is_cursor_cell) {
                 // Invert colors for cursor (or other cursor style)

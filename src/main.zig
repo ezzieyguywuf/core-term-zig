@@ -71,7 +71,7 @@ const RenderActor = struct {
             const u32_slice = u32_ptr[0..@intCast(pixel_count)];
 
             const time = @as(f32, @floatFromInt(self.frame_count)) * 0.05;
-                         try renderer.draw_demo_pattern(buf.width, buf.height, time, u32_slice, self.terminal.grid);
+                         try renderer.draw_demo_pattern(buf.width, buf.height, time, u32_slice, self.terminal.grid, self.terminal.cursor_x, self.terminal.cursor_y);
             // Commit to Wayland
             self.client.surface.attach(buf.wl_buffer, 0, 0);
             self.client.surface.damage(0, 0, buf.width, buf.height);
