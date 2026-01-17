@@ -102,8 +102,8 @@ pub const AnsiParser = struct {
     }
 
     fn reset_params(self: *AnsiParser) void {
-        for (self.params) |*param| {
-            param.* = 0;
+        for (0..self.params.len) |i| {
+            self.params[i] = 0;
         }
         self.param_idx = 0;
         self.current_param = 0;

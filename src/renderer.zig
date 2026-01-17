@@ -33,7 +33,7 @@ pub fn draw_demo_pattern(width_px: i32, height_px: i32, time: f32, out_buffer: [
                 return .{ .r = c.r, .g = c.g, .b = c.b, .a = @splat(1.0) };
             }
         };
-        try pf.evaluate(fill_context.eval, overall_bg_ctx, 0.0, @as(f32, @floatFromInt(y_px)), row_slice);
+        pf.evaluate(fill_context.eval, overall_bg_ctx, 0.0, @as(f32, @floatFromInt(y_px)), row_slice);
     }
 
     const CellRenderContext = struct {
@@ -157,7 +157,7 @@ pub fn draw_demo_pattern(width_px: i32, height_px: i32, time: f32, out_buffer: [
                 // Ensure the slice is within bounds and aligned for SIMD processing
                 if (current_row_start_idx + pf.LANES <= out_buffer.len) {
                     const pixel_slice_for_row = out_buffer[current_row_start_idx .. current_row_start_idx + pf.LANES];
-                    try pf.evaluate(cell_painter.eval, ctx, pixel_x_start, current_pixel_y, pixel_slice_for_row);
+                    pf.evaluate(cell_painter.eval, ctx, pixel_x_start, current_pixel_y, pixel_slice_for_row);
                 } else { 
                     // Handle potential out-of-bounds for the last few pixels in a row if not a multiple of LANES
                     // For now, skip these pixels to avoid complexity in PoC
@@ -226,6 +226,6 @@ pub fn draw_demo_pattern(width_px: i32, height_px: i32, time: f32, out_buffer: [
     for (0..@as(usize, @intCast(TITLE_BAR_HEIGHT))) |y_px| {
         const row_offset = y_px * @as(usize, @intCast(width_px));
         const row_slice = out_buffer[row_offset .. row_offset + @as(usize, @intCast(width_px))];
-        try pf.evaluate(title_bar_painter.eval, title_bar_ctx, 0.0, @as(f32, @floatFromInt(y_px)), row_slice);
+        pf.evaluate(title_bar_painter.eval, title_bar_ctx, 0.0, @as(f32, @floatFromInt(y_px)), row_slice);
     }
 }
