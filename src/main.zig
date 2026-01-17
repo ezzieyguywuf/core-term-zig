@@ -90,9 +90,9 @@ const RenderActor = struct {
                 self.client.width = dim.w;
                 self.client.height = dim.h;
                 // Resize the terminal grid based on character dimensions
-                const char_width_f32: f32 = renderer.CHAR_WIDTH;
-                const char_height_f32: f32 = renderer.CHAR_HEIGHT;
-                try self.terminal.resize(@as(usize, @as(f32, dim.w) / char_width_f32), @as(usize, @as(f32, dim.h) / char_height_f32));
+                const char_width_usize = @as(usize, renderer.CHAR_WIDTH);
+                const char_height_usize = @as(usize, renderer.CHAR_HEIGHT);
+                try self.terminal.resize(@as(usize, dim.w) / char_width_usize, @as(usize, dim.h) / char_height_usize);
             },
         }
     }
