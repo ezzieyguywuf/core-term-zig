@@ -78,7 +78,7 @@ pub const Client = struct {
     }
 
     pub fn dispatch(self: *Client) !void {
-        if (self.display.dispatch() != .SUCCESS) return error.DispatchFailed;
+        if (self.display.dispatchPending() != .SUCCESS) return error.DispatchFailed;
     }
 
     pub fn ensure_buffer(self: *Client) !void {
