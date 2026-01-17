@@ -151,7 +151,7 @@ pub fn draw_demo_pattern(width_px: i32, height_px: i32, time: f32, out_buffer: [
             };
 
             // Evaluate for each pixel row of the character
-            for (0..@as(usize, @intCast(CHAR_HEIGHT))) |char_row_offset| {
+            for (0..font.FONT_HEIGHT) |char_row_offset| {
                 const current_pixel_y = pixel_y_start + @as(f32, @floatFromInt(char_row_offset));
                 const current_row_start_idx = @as(usize, @intFromFloat(current_pixel_y)) * @as(usize, @intCast(width_px)) + @as(usize, @intFromFloat(pixel_x_start));
                 
