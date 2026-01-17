@@ -11,8 +11,6 @@ pub const TITLE_BAR_HEIGHT: usize = 30;
 pub const CLOSE_BUTTON_SIZE: usize = 30;
 
 pub fn draw_demo_pattern(width_px: i32, height_px: i32, time: f32, out_buffer: []u32, terminal_grid: *grid.Grid, cursor_x: usize, cursor_y: usize) !void {
-    _ = time; // Not used in this version
-
     // Background for areas outside the terminal
     const OverallBackgroundContext = struct {
         r: pf.Field,

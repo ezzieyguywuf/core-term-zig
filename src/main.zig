@@ -285,32 +285,56 @@ pub fn main() !void {
 
     const handle = system.handle;
 
-    std.debug.print("Window should be open. Animating...\n", .{});
+        // Test ANSI escape codes and terminal writing
+
+        const test_string = 
+
+            "\x1b[31mHello, \x1b[1mBold\x1b[0m\x1b[32mWorld!\x1b[0m\n" ++ 
+
+            "\x1b[44mBackground blue\x1b[0m\n" ++ 
+
+            "\x1b[33mYellow text\x1b[0m\n";
+
+        try handle.send(.{ .Management = .{ .WriteString = test_string } });
+
+    
+
+        std.debug.print("Window should be open. Animating...\n", .{});
+
+    
 
         // Animation Loop
+
         var i: usize = 0;
-        while (i < 1000) : (i += 1) {
-            try handle.send(.{ .Data = .{ .id = i } });
+
+        while (true) : (i += 1) {
+
+            handle.send(.{ .Data = .{ .id = i } }) catch |err| {
+
+                std.debug.print("Main loop ending: {}\n", .{err});
+
+                break;
+
+            };
+
             
+
             if (i == 200) {
+
                 std.debug.print("Switching to Sphere Demo...\n", .{});
-                try handle.send(.{ .Control = .SwitchMode });
+
+                handle.send(.{ .Control = .SwitchMode }) catch break;
+
             }
+
     
+
             busy_sleep(16 * std.time.ns_per_ms); // ~60 FPS
-            
-            // Simple check if we should stop?
-            // We can't easily check if the actor died here without atomic flag.
+
         }
-    // Test ANSI escape codes and terminal writing
-    const test_string =
-        "\x1b[31mHello, \x1b[1mBold\x1b[0m\x1b[32mWorld!\x1b[0m\n" ++
-        "\x1b[44mBackground blue\x1b[0m\n" ++
-        "\x1b[33mYellow text\x1b[0m\n";
-    try handle.send(.{ .Management = .{ .WriteString = test_string } });
 
-    std.debug.print("\nSending Shutdown...\n", .{});
-    try handle.send(.Shutdown);
+    
 
-    actor_thread.join();
-}
+        actor_thread.join();
+
+    }
