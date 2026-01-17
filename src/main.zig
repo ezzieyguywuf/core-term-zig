@@ -93,7 +93,7 @@ const RenderActor = struct {
                 // For simplicity, assume fixed font size for now
                 const char_width: usize = @as(usize, renderer.CHAR_WIDTH);
                 const char_height: usize = @as(usize, renderer.CHAR_HEIGHT);
-                try self.terminal.resize(self.allocator, dim.w / char_width, dim.h / char_height);
+                try self.terminal.resize(dim.w / char_width, dim.h / char_height);
             },
         }
     }
