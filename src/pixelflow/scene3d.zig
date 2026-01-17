@@ -142,8 +142,6 @@ pub fn render_scene(ray: Ray, sphere: Sphere, plane: Plane) struct { r: pf.Field
     // Floor Material: Checkerboard
     const hit_pos_plane = ray.origin.add(ray.dir.mul(hit_plane.dist));
     // Checker: (floor(x) + floor(z)) % 2
-    const check_x = @floor(hit_pos_plane.x);
-    const check_z = @floor(hit_pos_plane.z);
     // xor parity
     // Simulate xor/mod with floats
     // (a + b) % 2.0
