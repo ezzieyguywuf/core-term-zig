@@ -16,18 +16,18 @@ pub const Client = struct {
     wm_base: *xdg.WmBase,
     seat: ?*wl.Seat,
     pointer: ?*wl.Pointer,
-    
+
     surface: *wl.Surface,
     xdg_surface: *xdg.Surface,
     xdg_toplevel: *xdg.Toplevel,
-    
+
     configured: bool = false,
     width: i32 = 800,
     height: i32 = 600,
     running: bool = true,
 
     buffer: ?shm.Buffer = null,
-    
+
     // Input state
     pointer_x: f64 = 0,
     pointer_y: f64 = 0,
@@ -35,7 +35,7 @@ pub const Client = struct {
     pub fn init() !*Client {
         const display = try wl.Display.connect(null);
         const registry = try display.getRegistry();
-        
+
         const client = try std.heap.c_allocator.create(Client);
         client.* = .{
             .display = display,
@@ -64,11 +64,11 @@ pub const Client = struct {
         xdg_surface.setListener(*Client, xdgSurfaceListener, client);
         xdg_toplevel.setListener(*Client, xdgToplevelListener, client);
         xdg_toplevel.setTitle("CoreTerm Zig");
-        
+
         client.wm_base.setListener(*Client, xdgWmBaseListener, client);
-        
+
         if (client.seat) |seat| {
-             seat.setListener(*Client, seatListener, client);
+            seat.setListener(*Client, seatListener, client);
         }
 
         client.surface.commit();
@@ -83,15 +83,15 @@ pub const Client = struct {
 
     pub fn ensure_buffer(self: *Client) !void {
         if (!self.configured) return;
-        
+
         // Reallocate buffer if needed
         if (self.buffer == null or self.buffer.?.width != self.width or self.buffer.?.height != self.height) {
-             if (self.buffer) |b| {
-                 // std.posix.munmap(b.data); // Clean up old mapping
-                 // b.wl_buffer.destroy();
-                 _ = b;
-             }
-             self.buffer = try shm.createShmBuffer(self.shm, self.width, self.height);
+            if (self.buffer) |b| {
+                // std.posix.munmap(b.data); // Clean up old mapping
+                // b.wl_buffer.destroy();
+                _ = b;
+            }
+            self.buffer = try shm.createShmBuffer(self.shm, self.width, self.height);
         }
     }
 
@@ -111,7 +111,7 @@ pub const Client = struct {
             .global_remove => {},
         }
     }
-    
+
     fn seatListener(seat: *wl.Seat, event: wl.Seat.Event, client: *Client) void {
         switch (event) {
             .capabilities => |data| {
@@ -122,7 +122,7 @@ pub const Client = struct {
             },
         }
     }
-    
+
     fn pointerListener(_: *wl.Pointer, event: wl.Pointer.Event, client: *Client) void {
         switch (event) {
             .enter => |evt| {
@@ -167,10 +167,10 @@ pub const Client = struct {
     fn xdgToplevelListener(_: *xdg.Toplevel, event: xdg.Toplevel.Event, client: *Client) void {
         switch (event) {
             .configure => |configure| {
-                 if (configure.width > 0 and configure.height > 0) {
-                     client.width = configure.width;
-                     client.height = configure.height;
-                 }
+                if (configure.width > 0 and configure.height > 0) {
+                    client.width = configure.width;
+                    client.height = configure.height;
+                }
             },
             .close => client.running = false,
         }

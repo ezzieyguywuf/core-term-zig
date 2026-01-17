@@ -47,7 +47,7 @@ pub fn ActorHandle(comptime D: type, comptime C: type, comptime M: type) type {
         tx_control: *BoundedQueue(C),
         tx_mgmt: *BoundedQueue(M),
 
-        // Cloning in Zig is manual for reference types if ownership is shared. 
+        // Cloning in Zig is manual for reference types if ownership is shared.
         // Here we just copy the pointers since the Queues are heap-allocated and ref-counted or owned by the Scheduler?
         // In this simple implementation, we assume the Scheduler owns the queues and they live as long as the Scheduler.
         // For a robust implementation, we might need shared_ptr style management or just assume Scheduler outlives Handles.
@@ -117,7 +117,7 @@ pub fn ActorScheduler(comptime D: type, comptime C: type, comptime M: type) type
         const Msg = Message(D, C, M);
 
         allocator: std.mem.Allocator,
-        
+
         // Queues
         q_doorbell: *BoundedQueue(System),
         q_data: *BoundedQueue(D),
@@ -218,7 +218,7 @@ pub fn ActorScheduler(comptime D: type, comptime C: type, comptime M: type) type
             }
 
             const sys_status = if (more_work) SystemStatus.Busy else SystemStatus.Idle;
-            
+
             // Park the actor (opportunity to yield/sleep/check OS events)
             const actor_status = try actor.park(sys_status);
 
@@ -237,7 +237,7 @@ pub fn ActorScheduler(comptime D: type, comptime C: type, comptime M: type) type
                     error.Closed => return false,
                     else => return err,
                 };
-                
+
                 // Call the actor function by name
                 switch (func) {
                     .handle_control => try actor.handle_control(msg),

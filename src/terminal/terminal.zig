@@ -71,7 +71,7 @@ pub const Terminal = struct {
         self.cursor_x = 0;
         self.cursor_y = 0;
     }
-    
+
     pub fn resize(self: *Terminal, new_width: usize, new_height: usize) !void {
         try self.grid.resize(self.allocator, new_width, new_height);
         self.cursor_x = @min(self.cursor_x, self.grid.width - 1);

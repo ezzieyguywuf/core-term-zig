@@ -37,7 +37,7 @@ pub const Cell = struct {
     is_inverse: bool,
 
     pub fn init(character: u21, fg_color: Color, bg_color: Color) Cell {
-        return .{ 
+        return .{
             .character = character,
             .fg_color = fg_color,
             .bg_color = bg_color,
