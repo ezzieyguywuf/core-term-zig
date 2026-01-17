@@ -57,11 +57,13 @@ pub const Grid = struct {
     width: usize,
     height: usize,
     cells: []Cell,
+    allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator, width: usize, height: usize) !*Grid {
         const grid = try allocator.create(Grid);
         grid.width = width;
         grid.height = height;
+        grid.allocator = allocator;
         grid.cells = try allocator.alloc(Cell, width * height);
         for (grid.cells) |*cell| {
             cell.* = Cell.default();

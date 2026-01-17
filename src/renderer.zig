@@ -132,7 +132,7 @@ pub fn draw_demo_pattern(width_px: i32, height_px: i32, time: f32, out_buffer: [
                             if (font_row_idx < font.FONT_HEIGHT and font_col_idx < font.FONT_WIDTH) {
                                 const row_byte = c.character_bitmap[font_row_idx];
                                 // Check if the specific pixel in the bitmap is set
-                                const is_pixel_set = (row_byte >> (font.FONT_WIDTH - 1 - font_col_idx)) & 0x01;
+                                const is_pixel_set = (row_byte >> @as(u3, @intCast(font.FONT_WIDTH - 1 - font_col_idx))) & 0x01;
 
                                 if (is_pixel_set != 0) {
                                     // Use array indexing for access
