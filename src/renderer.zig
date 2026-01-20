@@ -118,15 +118,23 @@ pub fn draw_demo_pattern(width_px: i32, height_px: i32, time: f32, out_buffer: [
 
             
 
-            // Calculate pixel coordinates for this cell
+                        // Calculate pixel coordinates for this cell
 
-            const pixel_x_start = @as(f32, @floatFromInt(col_idx)) * CHAR_WIDTH;
+            
 
-            const pixel_y_start = @as(f32, @floatFromInt(row_idx)) * CHAR_HEIGHT;
+                        const pixel_x_start = @as(f32, @floatFromInt(col_idx)) * CHAR_WIDTH;
 
+            
 
+                        const pixel_y_start = @as(f32, @floatFromInt(row_idx)) * CHAR_HEIGHT + @as(f32, @floatFromInt(TITLE_BAR_HEIGHT));
 
-            const is_cursor_cell = 
+            
+
+            
+
+            
+
+                        const is_cursor_cell = 
 
                 col_idx == cursor_x and 
 
