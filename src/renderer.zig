@@ -73,7 +73,6 @@ pub fn draw_demo_pattern(width_px: i32, height_px: i32, time: f32, out_buffer: [
             var bg_color_val = cell.bg_color;
             var is_inverse_val = cell.is_inverse;
 
-
             if (is_cursor_cell) {
                 // Invert colors for cursor (or other cursor style)
                 is_inverse_val = !is_inverse_val;
@@ -96,13 +95,8 @@ pub fn draw_demo_pattern(width_px: i32, height_px: i32, time: f32, out_buffer: [
                 .is_inverse = is_inverse_val,
                 .character_bitmap = if (cell.character < font.BITMAP_FONT.len) 
                                       font.BITMAP_FONT[cell.character] 
-                                  else blk: {
-                                      // Debug print
-                                      if (cell.character >= 128) {
-                                          std.debug.print("Invalid char: {d}\n", .{cell.character});
-                                      }
-                                      break :blk font.BITMAP_FONT['?'];
-                                  },
+                                  else 
+                                      font.BITMAP_FONT['?'], // Fallback for unprintable
                 .cell_pixel_x = pixel_x_start,
                 .cell_pixel_y = pixel_y_start,
             };

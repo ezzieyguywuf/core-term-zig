@@ -27,7 +27,15 @@ pub const FONT_HEIGHT = 16;
 pub const BITMAP_FONT = [_][FONT_HEIGHT]u8{
     // 0x00 - NUL (placeholder)
     [_]u8{0} ** FONT_HEIGHT,
-    // ... more control characters ...
+    // 0x01 - 0x1F (Control characters)
+    [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT,
+    [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT,
+    [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT,
+    [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT,
+    [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT,
+    [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT,
+    [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT,
+    [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT, [_]u8{0} ** FONT_HEIGHT,
 
     // 0x20 - SPACE
     [_]u8{0} ** FONT_HEIGHT,
