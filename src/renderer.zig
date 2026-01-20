@@ -96,8 +96,13 @@ pub fn draw_demo_pattern(width_px: i32, height_px: i32, time: f32, out_buffer: [
                 .is_inverse = is_inverse_val,
                 .character_bitmap = if (cell.character < font.BITMAP_FONT.len) 
                                       font.BITMAP_FONT[cell.character] 
-                                  else 
-                                      font.BITMAP_FONT['?'], // Fallback for unprintable
+                                  else blk: {
+                                      // Debug print
+                                      if (cell.character >= 128) {
+                                          std.debug.print("Invalid char: {d}\n", .{cell.character});
+                                      }
+                                      break :blk font.BITMAP_FONT['?'];
+                                  },
                 .cell_pixel_x = pixel_x_start,
                 .cell_pixel_y = pixel_y_start,
             };
