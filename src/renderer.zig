@@ -3,6 +3,8 @@ const pf = @import("pixelflow/core.zig");
 const shapes = @import("pixelflow/shapes.zig");
 const grid = @import("terminal/grid.zig");
 const font = @import("font.zig");
+const vec3 = @import("pixelflow/vec3.zig");
+const scene3d = @import("pixelflow/scene3d.zig");
 
 pub const CHAR_WIDTH: f32 = @as(f32, font.FONT_WIDTH);
 pub const CHAR_HEIGHT: f32 = @as(f32, font.FONT_HEIGHT);
@@ -11,7 +13,8 @@ pub const TITLE_BAR_HEIGHT: usize = 30;
 pub const CLOSE_BUTTON_SIZE: usize = 30;
 
 pub fn draw_demo_pattern(width_px: i32, height_px: i32, time: f32, out_buffer: []u32, terminal_grid: *grid.Grid, cursor_x: usize, cursor_y: usize) !void {
-    _ = time;
+    _ = time; // Mark as unused if not directly used outside of cursor drawing
+
     // Background for areas outside the terminal
     const OverallBackgroundContext = struct {
         r: pf.Field,
@@ -237,22 +240,6 @@ pub fn draw_demo_pattern(width_px: i32, height_px: i32, time: f32, out_buffer: [
         pf.evaluate(title_bar_painter.eval, title_bar_ctx, 0.0, @as(f32, @floatFromInt(y_px)), row_slice);
     }
 }
-
-const std = @import("std");
-const pf = @import("pixelflow/core.zig");
-const shapes = @import("pixelflow/shapes.zig");
-const grid = @import("terminal/grid.zig");
-const font = @import("font.zig");
-const vec3 = @import("pixelflow/vec3.zig");
-const scene3d = @import("pixelflow/scene3d.zig");
-
-pub const CHAR_WIDTH: f32 = @as(f32, font.FONT_WIDTH);
-pub const CHAR_HEIGHT: f32 = @as(f32, font.FONT_HEIGHT);
-
-pub const TITLE_BAR_HEIGHT: usize = 30;
-pub const CLOSE_BUTTON_SIZE: usize = 30;
-
-// ... (draw_demo_pattern remains unchanged) ...
 
 pub fn draw_sphere_demo(width_px: i32, height_px: i32, time: f32, out_buffer: []u32) !void {
     const w_f = @as(f32, @floatFromInt(width_px));
