@@ -19,39 +19,44 @@ pub const Client = struct {
 
     surface: *wl.Surface,
     xdg_surface: *xdg.Surface,
-    xdg_toplevel: *xdg.Toplevel,
-
-    configured: bool = false,
-    width: i32 = 800,
-    height: i32 = 600,
-    running: bool = true,
-
-    buffer: ?shm.Buffer = null,
-
-    // Input state
-    pointer_x: f64 = 0,
-    pointer_y: f64 = 0,
-
-    pub fn init() !*Client {
-        const display = try wl.Display.connect(null);
-        const registry = try display.getRegistry();
-
-        const client = try std.heap.c_allocator.create(Client);
-        client.* = .{
-            .display = display,
-            .registry = registry,
-            .compositor = undefined,
-            .shm = undefined,
-            .wm_base = undefined,
-            .seat = undefined,
-            .pointer = null,
-            .surface = undefined,
-            .xdg_surface = undefined,
-            .xdg_toplevel = undefined,
-        };
-
-        registry.setListener(*Client, registryListener, client);
-        if (display.roundtrip() != .SUCCESS) return error.RoundTripFailed;
+        xdg_toplevel: *xdg.Toplevel,
+        
+        configured: bool = false,
+        width: i32 = 800,
+        height: i32 = 600,
+        running: bool = true,
+        
+        // Frame synchronization
+        frame_callback: ?*wl.Callback = null,
+        waiting_for_frame: bool = false,
+    
+        buffer: ?shm.Buffer = null,
+        
+        // Input state
+        pointer_x: f64 = 0,
+        pointer_y: f64 = 0,
+    
+        pub fn init() !*Client {
+            const display = try wl.Display.connect(null);
+            const registry = try display.getRegistry();
+            
+            const client = try std.heap.c_allocator.create(Client);
+            client.* = .{
+                .display = display,
+                .registry = registry,
+                .compositor = undefined,
+                .shm = undefined,
+                .wm_base = undefined,
+                .seat = undefined,
+                .pointer = null,
+                .surface = undefined,
+                .xdg_surface = undefined,
+                .xdg_toplevel = undefined,
+                .frame_callback = null,
+                .waiting_for_frame = false,
+            };
+    
+            registry.setListener(*Client, registryListener, client);        if (display.roundtrip() != .SUCCESS) return error.RoundTripFailed;
 
         const surface = try client.compositor.createSurface();
         const xdg_surface = try client.wm_base.getXdgSurface(surface);
@@ -79,6 +84,29 @@ pub const Client = struct {
 
     pub fn dispatch(self: *Client) !void {
         if (self.display.dispatchPending() != .SUCCESS) return error.DispatchFailed;
+    }
+    
+    pub fn waitForFrame(self: *Client) !void {
+        while (self.waiting_for_frame and self.running) {
+            if (self.display.dispatch() != .SUCCESS) return error.DispatchFailed;
+        }
+    }
+    
+    pub fn setupNextFrame(self: *Client) !void {
+        if (self.frame_callback) |cb| {
+            cb.destroy();
+        }
+        self.frame_callback = try self.surface.frame();
+        self.frame_callback.?.setListener(*Client, frameListener, self);
+        self.waiting_for_frame = true;
+    }
+    
+    fn frameListener(_: *wl.Callback, _: u32, client: *Client) void {
+        if (client.frame_callback) |cb| {
+            cb.destroy();
+            client.frame_callback = null;
+        }
+        client.waiting_for_frame = false;
     }
 
     pub fn ensure_buffer(self: *Client) !void {

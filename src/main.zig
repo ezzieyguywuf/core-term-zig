@@ -123,59 +123,135 @@ const RenderActor = struct {
 
 
 
-    pub fn handle_data(self: *RenderActor, msg: RenderData) !void {
+        pub fn handle_data(self: *RenderActor, msg: RenderData) !void {
 
-        _ = msg;
 
-        self.frame_count += 1;
 
-        
+            _ = msg;
 
-        // Ensure buffer exists and is correct size
 
-        try self.client.ensure_buffer();
 
-        
+            self.frame_count += 1;
 
-        if (self.client.buffer) |*buf| {
 
-             // Convert u8 byte buffer to u32 pixel buffer for SIMD
 
-             // Safe because we created it with xrgb8888 (4 bytes per pixel)
+            
 
-             const pixel_count = buf.width * buf.height;
 
-             const u32_ptr = @as([*]u32, @ptrCast(@alignCast(buf.data.ptr)));
 
-             const u32_slice = u32_ptr[0..@intCast(pixel_count)];
+            // Wait for previous frame to complete (VSync)
 
-             
 
-             const time = @as(f32, @floatFromInt(self.frame_count)) * 0.05;
 
-             
+            try self.client.waitForFrame();
 
-             switch (self.mode) {
 
-                 .Terminal => try renderer.draw_demo_pattern(buf.width, buf.height, time, u32_slice, self.terminal.grid, self.terminal.cursor_x, self.terminal.cursor_y),
 
-                 .Sphere => try renderer.draw_sphere_demo(buf.width, buf.height, time, u32_slice),
+            
 
-             }
 
-             
 
-             // Commit to Wayland
+            // Ensure buffer exists and is correct size
 
-             self.client.surface.attach(buf.wl_buffer, 0, 0);
 
-             self.client.surface.damage(0, 0, buf.width, buf.height);
 
-             self.client.surface.commit();
+            try self.client.ensure_buffer();
+
+
+
+            
+
+
+
+            if (self.client.buffer) |*buf| {
+
+
+
+                 // Convert u8 byte buffer to u32 pixel buffer for SIMD
+
+
+
+                 // Safe because we created it with xrgb8888 (4 bytes per pixel)
+
+
+
+                 const pixel_count = buf.width * buf.height;
+
+
+
+                 const u32_ptr = @as([*]u32, @ptrCast(@alignCast(buf.data.ptr)));
+
+
+
+                 const u32_slice = u32_ptr[0..@intCast(pixel_count)];
+
+
+
+                 
+
+
+
+                 const time = @as(f32, @floatFromInt(self.frame_count)) * 0.05;
+
+
+
+                 
+
+
+
+                 switch (self.mode) {
+
+
+
+                     .Terminal => try renderer.draw_demo_pattern(buf.width, buf.height, time, u32_slice, self.terminal.grid, self.terminal.cursor_x, self.terminal.cursor_y),
+
+
+
+                     .Sphere => try renderer.draw_sphere_demo(buf.width, buf.height, time, u32_slice),
+
+
+
+                 }
+
+
+
+                 
+
+
+
+                 // Commit to Wayland
+
+
+
+                 self.client.surface.attach(buf.wl_buffer, 0, 0);
+
+
+
+                 self.client.surface.damage(0, 0, buf.width, buf.height);
+
+
+
+                 
+
+
+
+                 // Request callback for next frame BEFORE committing
+
+
+
+                 try self.client.setupNextFrame();
+
+
+
+                 self.client.surface.commit();
+
+
+
+            }
+
+
 
         }
-
-    }
 
 
 
