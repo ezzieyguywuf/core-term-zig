@@ -78,7 +78,10 @@ pub const Plane = struct {
         const num = self.height - ray.origin.y;
         const denom = ray.dir.y;
         
-        const t = num / denom;
+        // Avoid division by zero
+        const safe_denom = pf.Core.select(@abs(denom) > pf.Core.constant(0.0001), denom, pf.Core.constant(0.0001));
+        
+        const t = num / safe_denom;
         
         // Check if hit is forward (t > 0)
         const hit_mask = t > pf.Core.constant(0.001);
