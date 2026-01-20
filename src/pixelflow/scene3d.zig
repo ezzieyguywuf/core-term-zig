@@ -110,11 +110,4 @@ pub fn render_scene(ray: Ray, sphere: Sphere, plane: Plane) struct { r: pf.Field
     const bg_b = pf.Core.mix(pf.Core.constant(0.4), pf.Core.constant(0.9), ray_sky_t);
     
     return .{ .r = bg_r, .g = bg_g, .b = bg_b };
-    
-    /*
-    // Intersect both
-    const hit_sphere = sphere.intersect(ray);
-    const hit_plane = plane.intersect(ray);
-    ... (rest of the code commented out)
-    */
 }
