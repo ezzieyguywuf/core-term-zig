@@ -323,15 +323,17 @@ pub fn draw_demo_pattern(width_px: i32, height_px: i32, time: f32, out_buffer: [
             };
 
             // Evaluate for each pixel row of the character
-            // Use scaled height
+            // Use scaled height and width
             const char_height_usize: usize = @as(usize, @intFromFloat(CHAR_HEIGHT));
+            const char_width_usize: usize = @as(usize, @intFromFloat(CHAR_WIDTH));
+            
             for (0..char_height_usize) |char_row_offset| {
                 const current_pixel_y = pixel_y_start + @as(f32, @floatFromInt(char_row_offset));
                 const current_row_start_idx = @as(usize, @intFromFloat(current_pixel_y)) * @as(usize, @intCast(width_px)) + @as(usize, @intFromFloat(pixel_x_start));
                 
                 // Ensure the slice is within bounds and aligned for SIMD processing
-                if (current_row_start_idx + pf.LANES <= out_buffer.len) {
-                    const pixel_slice_for_row = out_buffer[current_row_start_idx .. current_row_start_idx + pf.LANES];
+                if (current_row_start_idx + char_width_usize <= out_buffer.len) {
+                    const pixel_slice_for_row = out_buffer[current_row_start_idx .. current_row_start_idx + char_width_usize];
                     pf.evaluate(cell_painter.eval, ctx, pixel_x_start, current_pixel_y, pixel_slice_for_row);
                 } else { 
                     // Handle potential out-of-bounds for the last few pixels in a row if not a multiple of LANES
