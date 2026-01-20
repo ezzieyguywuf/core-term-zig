@@ -31,8 +31,12 @@ pub const Sphere = struct {
         // if d2 > radius2, no intersection
         const miss_mask = d2 > radius2;
         
+        // Guard against negative sqrt (NaN)
+        const discriminant = radius2 - d2;
+        const safe_discriminant = pf.Core.select(miss_mask, pf.Core.constant(0.0), discriminant);
+        
         // thc = sqrt(radius2 - d2)
-        const thc = pf.Core.sqrt(radius2 - d2);
+        const thc = pf.Core.sqrt(safe_discriminant);
         
         // t0 = tca - thc
         // t1 = tca + thc
