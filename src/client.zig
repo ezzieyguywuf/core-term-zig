@@ -19,13 +19,12 @@ pub const Client = struct {
 
     surface: *wl.Surface,
     xdg_surface: *xdg.Surface,
-        xdg_toplevel: *xdg.Toplevel,
-        
-        configured: bool = false,
-        width: i32 = 800,
-        height: i32 = 600,
-        running: bool = true,
-        
+            xdg_toplevel: *xdg.Toplevel,
+            
+            configured: bool = false,
+            width: i32 = 1280,
+            height: i32 = 900,
+            running: bool = true,        
         // Frame synchronization
         frame_callback: ?*wl.Callback = null,
         waiting_for_frame: bool = false,
