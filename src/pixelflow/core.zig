@@ -59,28 +59,27 @@ pub const Core = struct {
         return a > b;
     }
 
-    /// Pack 4 float channels (0.0-1.0) into RGBA u32
-    pub fn pack_rgba(r: Field, g: Field, b: Field, a: Field) Discrete {
-        // Clamp to 0-1
-        const zero: Field = @splat(0.0);
-        const one: Field = @splat(1.0);
-
-        const r_c = @max(zero, @min(one, r));
-        const g_c = @max(zero, @min(one, g));
-        const b_c = @max(zero, @min(one, b));
-        const a_c = @max(zero, @min(one, a));
-
-        // Scale to 0-255 and cast to u32
-        const scale: Field = @splat(255.0);
-        const r_i: Discrete = @intFromFloat(r_c * scale);
-        const g_i: Discrete = @intFromFloat(g_c * scale);
-        const b_i: Discrete = @intFromFloat(b_c * scale);
-        const a_i: Discrete = @intFromFloat(a_c * scale);
-
-        // Pack: R | G<<8 | B<<16 | A<<24
-        return r_i | (g_i << @splat(8)) | (b_i << @splat(16)) | (a_i << @splat(24));
-    }
-};
+        /// Pack 4 float channels (0.0-1.0) into RGBA u32 (actually BGRA for xrgb8888)
+        pub fn pack_rgba(r: Field, g: Field, b: Field, a: Field) Discrete {
+            // Clamp to 0-1
+            const zero: Field = @splat(0.0);
+            const one: Field = @splat(1.0);
+            
+            const r_c = @max(zero, @min(one, r));
+            const g_c = @max(zero, @min(one, g));
+            const b_c = @max(zero, @min(one, b));
+            const a_c = @max(zero, @min(one, a));
+    
+            // Scale to 0-255 and cast to u32
+            const scale: Field = @splat(255.0);
+            const r_i: Discrete = @intFromFloat(r_c * scale);
+            const g_i: Discrete = @intFromFloat(g_c * scale);
+            const b_i: Discrete = @intFromFloat(b_c * scale);
+            const a_i: Discrete = @intFromFloat(a_c * scale);
+    
+            // Pack: B | G<<8 | R<<16 | A<<24 (Little Endian for BGRA/xrgb8888)
+            return b_i | (g_i << @splat(8)) | (r_i << @splat(16)) | (a_i << @splat(24));
+        }};
 
 /// Manifold Interface equivalent
 /// In Zig, we can use comptime generics instead of Traits

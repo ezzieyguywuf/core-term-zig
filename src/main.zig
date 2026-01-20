@@ -4,9 +4,9 @@ const Client = @import("client.zig").Client;
 const renderer = @import("renderer.zig");
 const terminal_mod = @import("terminal/terminal.zig");
 const ansi_parser_mod = @import("terminal/ansi.zig");
+const font = @import("font.zig");
 
 // Define Message Types
-
 const RenderData = struct {
 
     id: usize,
@@ -336,9 +336,25 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    std.debug.print("Initializing Zig CoreTerm...\n", .{});
+            std.debug.print("Initializing Zig CoreTerm...\n", .{});
 
-    var system = try as.create_actor(allocator, RenderData, RenderControl, RenderMgmt, 100, 10);
+        
+
+            var system = try as.create_actor(
+
+                allocator,
+
+                RenderData,
+
+                RenderControl,
+
+                RenderMgmt,
+
+                100, 
+
+                10   
+
+            );
     defer system.scheduler.deinit();
 
     // Spawn the Actor Thread
