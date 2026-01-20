@@ -48,7 +48,7 @@ pub const AnsiParser = struct {
                 // TODO: Implement scrolling if cursor_y is out of bounds
             },
             0x0D => self.terminal.cursor_x = 0, // CR - Carriage Return
-            else => self.terminal.write_char(@as(u21, byte)),
+            else => if (byte < 128) self.terminal.write_char(@as(u21, byte)) else self.terminal.write_char('?'),
         }
     }
 
