@@ -101,7 +101,10 @@ pub const Client = struct {
         self.waiting_for_frame = true;
     }
     
-    fn frameListener(_: *wl.Callback, _: u32, client: *Client) void {
+    fn frameListener(_: *wl.Callback, event: wl.Callback.Event, client: *Client) void {
+        switch (event) {
+            .done => {},
+        }
         if (client.frame_callback) |cb| {
             cb.destroy();
             client.frame_callback = null;
