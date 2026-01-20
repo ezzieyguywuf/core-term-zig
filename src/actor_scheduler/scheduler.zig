@@ -155,6 +155,13 @@ pub fn ActorScheduler(comptime D: type, comptime C: type, comptime M: type) type
             self.q_mgmt.deinit();
         }
 
+        pub fn close(self: *Self) void {
+            self.q_doorbell.close();
+            self.q_data.close();
+            self.q_control.close();
+            self.q_mgmt.close();
+        }
+
         pub fn handle(self: *Self) Handle {
             return Handle{
                 .tx_doorbell = self.q_doorbell,
@@ -165,6 +172,7 @@ pub fn ActorScheduler(comptime D: type, comptime C: type, comptime M: type) type
         }
 
         pub fn run(self: *Self, actor: anytype) !void {
+            defer self.close();
             var working = false;
 
             while (true) {
