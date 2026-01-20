@@ -135,16 +135,47 @@ pub fn render_scene(ray: Ray, sphere: Sphere, plane: Plane) struct { r: pf.Field
     
     // Sphere Material: Chrome/Reflective
     // R = reflect(D, N)
-    // Sky color based on R.y
     const view_dir = ray.dir;
     const reflect_dir = view_dir.reflect(normal);
     
-    // Sky gradient (simple)
-    // mix(blue, white, reflect_dir.y)
-    const sky_t = reflect_dir.y * pf.Core.constant(0.5) + pf.Core.constant(0.5);
-    const chrome_r = pf.Core.mix(pf.Core.constant(0.3), pf.Core.constant(0.8), sky_t);
-    const chrome_g = pf.Core.mix(pf.Core.constant(0.3), pf.Core.constant(0.8), sky_t);
-    const chrome_b = pf.Core.mix(pf.Core.constant(0.8), pf.Core.constant(1.0), sky_t);
+    // --- Reflection Bounce (1 level) ---
+    // Origin: P + N * epsilon
+    const hit_pos_sphere = ray.origin.add(ray.dir.mul(hit_sphere.dist));
+    const bounce_origin = hit_pos_sphere.add(hit_sphere.normal.mul(pf.Core.constant(0.001)));
+    const bounce_ray = Ray{ .origin = bounce_origin, .dir = reflect_dir };
+    
+    // Intersect bounce ray with Plane only (we assume sphere doesn't reflect itself or sky is default)
+    const hit_bounce_plane = plane.intersect(bounce_ray);
+    
+    // Bounce Plane Material
+    const hit_pos_bounce = bounce_ray.origin.add(bounce_ray.dir.mul(hit_bounce_plane.dist));
+    const b_check_val = @sin(hit_pos_bounce.x * pf.Core.constant(3.0)) * @sin(hit_pos_bounce.z * pf.Core.constant(3.0));
+    const b_is_white = b_check_val > pf.Core.constant(0.0);
+    
+    // Lighting for bounce
+    // Bounce normal is always up (0,1,0)
+    const b_normal = Vec3.init(pf.Core.constant(0.0), pf.Core.constant(1.0), pf.Core.constant(0.0));
+    const b_diff = @max(pf.Core.constant(0.0), b_normal.dot(light_dir));
+    
+    const b_floor_r = pf.Core.select(b_is_white, pf.Core.constant(0.6), pf.Core.constant(0.3)) * b_diff;
+    const b_floor_g = pf.Core.select(b_is_white, pf.Core.constant(0.6), pf.Core.constant(0.3)) * b_diff;
+    const b_floor_b = pf.Core.select(b_is_white, pf.Core.constant(0.6), pf.Core.constant(0.3)) * b_diff;
+
+    // Bounce Sky (if miss)
+    const b_sky_t = reflect_dir.y * pf.Core.constant(0.5) + pf.Core.constant(0.5);
+    const b_bg_r = pf.Core.mix(pf.Core.constant(0.1), pf.Core.constant(0.4), b_sky_t);
+    const b_bg_g = pf.Core.mix(pf.Core.constant(0.1), pf.Core.constant(0.6), b_sky_t);
+    const b_bg_b = pf.Core.mix(pf.Core.constant(0.4), pf.Core.constant(0.9), b_sky_t);
+    
+    // Mix bounce result
+    const reflect_r = pf.Core.select(hit_bounce_plane.hit, b_floor_r, b_bg_r);
+    const reflect_g = pf.Core.select(hit_bounce_plane.hit, b_floor_g, b_bg_g);
+    const reflect_b = pf.Core.select(hit_bounce_plane.hit, b_floor_b, b_bg_b);
+
+    // Chrome base color (mix reflection with some base)
+    const chrome_r = reflect_r;
+    const chrome_g = reflect_g;
+    const chrome_b = reflect_b;
     
     // Floor Material: Checkerboard
     const hit_pos_plane = ray.origin.add(ray.dir.mul(hit_plane.dist));
