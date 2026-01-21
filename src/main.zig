@@ -90,8 +90,8 @@ const RenderActor = struct {
              const time = @as(f32, @floatFromInt(self.frame_count)) * 0.05;
              
              switch (self.mode) {
-                 .Terminal => try renderer.draw_demo_pattern(buf.width, buf.height, time, u32_slice, self.terminal.grid, self.terminal.cursor_x, self.terminal.cursor_y),
-                 .Sphere => try renderer.draw_sphere_demo(buf.width, buf.height, time, u32_slice),
+                 .Terminal => try renderer.draw_demo_pattern(self.allocator, buf.width, buf.height, time, u32_slice, self.terminal.grid, self.terminal.cursor_x, self.terminal.cursor_y),
+                 .Sphere => try renderer.draw_sphere_demo(self.allocator, buf.width, buf.height, time, u32_slice),
              }
              
              // Commit to Wayland
