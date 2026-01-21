@@ -126,9 +126,19 @@ const RenderActor = struct {
                 
                 log.info("pixelflow_runtime::engine_troupe", "Relaying Resized: id=6291457, {d}x{d}", .{dim.w, dim.h});
                 
-                // Temporarily hardcode terminal resize dimensions in handler
-                const new_term_width_chars: usize = 80;
-                const new_term_height_chars: usize = 25;
+                // Calculate new grid dimensions based on window size and char size
+                const char_w = @as(i32, @intFromFloat(renderer.CHAR_WIDTH));
+                const char_h = @as(i32, @intFromFloat(renderer.CHAR_HEIGHT));
+                const title_h = @as(i32, @intCast(renderer.TITLE_BAR_HEIGHT));
+                
+                const avail_h = dim.h - title_h;
+                
+                const cols = @divTrunc(dim.w, char_w);
+                const rows = @divTrunc(avail_h, char_h);
+                
+                const new_term_width_chars = @as(usize, @intCast(@max(1, cols)));
+                const new_term_height_chars = @as(usize, @intCast(@max(1, rows)));
+
                 try self.terminal.resize(new_term_width_chars, new_term_height_chars);
             },
             .SwitchMode => {
