@@ -229,10 +229,7 @@ pub fn main() !void {
     var frames_since_log: usize = 0;
 
     while (true) : (i += 1) {
-        handle.send(.{ .Data = .{ .id = i } }) catch |err| {
-            _ = err; // Expected on close
-            break;
-        };
+        handle.send(.{ .Data = .{ .id = i } }) catch break;
         
         if (i == 200) {
             log.info("pixelflow_runtime::engine_troupe", "Switching to Sphere Demo...", .{});
