@@ -53,7 +53,7 @@ const RenderActor = struct {
         const font_path = "assets/font/Noto_Sans_Mono/NotoSansMono-VariableFont_wdth,wght.ttf";
         const file = try std.fs.cwd().openFile(font_path, .{});
         defer file.close();
-        const font_data = try file.readToEndAlloc(allocator, 1024 * 1024 * 5); // 5MB max
+        const font_data = try file.reader().readAllAlloc(allocator, 1024 * 1024 * 5); // 5MB max
         
         const font_atlas = try allocator.create(atlas_mod.Atlas);
         font_atlas.* = try atlas_mod.Atlas.init(allocator, font_data);
