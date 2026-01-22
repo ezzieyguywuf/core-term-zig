@@ -135,9 +135,5 @@ pub const AnalyticalQuad = struct {
     pub fn eval(self: AnalyticalQuad, x: Field, y: Field) Field {
         _ = self; _ = x; _ = y;
         return Core.constant(0.0);
-        /*
-        if (self.is_linear) return Core.constant(0.0);
-        ...
-        */
     }
 };
