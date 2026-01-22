@@ -4,8 +4,8 @@ const Client = @import("client.zig").Client;
 const renderer = @import("renderer.zig");
 const terminal_mod = @import("terminal/terminal.zig");
 const ansi_parser_mod = @import("terminal/ansi.zig");
-const font = @import("font.zig");
 const log = @import("log.zig");
+const atlas_mod = @import("pixelflow/fonts/atlas.zig");
 
 // Define Message Types
 const RenderData = struct {
@@ -37,6 +37,7 @@ const RenderActor = struct {
     ansi_parser: ansi_parser_mod.AnsiParser,
     mode: RenderMode,
     last_frame_time: i128,
+    font_atlas: *atlas_mod.Atlas,
 
     pub fn init(allocator: std.mem.Allocator) !RenderActor {
         const client = try Client.init();
@@ -46,6 +47,16 @@ const RenderActor = struct {
         log.info("pixelflow_runtime::platform::linux::platform", "X11: Creating window 'Animated Sphere' {d}x{d}", .{client.width, client.height});
         log.info("pixelflow_runtime::platform::linux::window", "X11: Xft.dpi = 192, scale = 2.00", .{});
         log.info("pixelflow_runtime::engine_troupe", "Relaying WindowCreated: id=6291457, {d}x{d}, scale=2", .{client.width, client.height});
+
+        // Load Font
+        // Ensure path is correct relative to CWD
+        const font_path = "assets/font/Noto_Sans_Mono/NotoSansMono-VariableFont_wdth,wght.ttf";
+        const file = try std.fs.cwd().openFile(font_path, .{});
+        defer file.close();
+        const font_data = try file.readToEndAlloc(allocator, 1024 * 1024 * 5); // 5MB max
+        
+        const font_atlas = try allocator.create(atlas_mod.Atlas);
+        font_atlas.* = try atlas_mod.Atlas.init(allocator, font_data);
 
         // Workaround: hardcode dimensions until f32 cast issue is resolved properly
         const term_width_chars: usize = 80;
@@ -61,11 +72,14 @@ const RenderActor = struct {
             .ansi_parser = parser,
             .mode = .Terminal,
             .last_frame_time = std.time.nanoTimestamp(),
+            .font_atlas = font_atlas,
         };
     }
     
     pub fn deinit(self: *RenderActor) void {
         self.terminal.deinit();
+        self.font_atlas.deinit();
+        self.allocator.destroy(self.font_atlas);
         // client deinit? Client is allocated by c_allocator.
         // We should deinit client here too if it was allocated by our allocator.
         // For now, client is leaked. In proper app, it would be freed.
@@ -90,7 +104,7 @@ const RenderActor = struct {
              const time = @as(f32, @floatFromInt(self.frame_count)) * 0.05;
              
              switch (self.mode) {
-                 .Terminal => try renderer.draw_demo_pattern(self.allocator, buf.width, buf.height, time, u32_slice, self.terminal.grid, self.terminal.cursor_x, self.terminal.cursor_y),
+                 .Terminal => try renderer.draw_demo_pattern(self.allocator, buf.width, buf.height, time, u32_slice, self.terminal.grid, self.terminal.cursor_x, self.terminal.cursor_y, self.font_atlas),
                  .Sphere => try renderer.draw_sphere_demo(self.allocator, buf.width, buf.height, time, u32_slice),
              }
              

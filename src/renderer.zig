@@ -2,13 +2,16 @@ const std = @import("std");
 const pf = @import("pixelflow/core.zig");
 const shapes = @import("pixelflow/shapes.zig");
 const grid = @import("terminal/grid.zig");
-const font = @import("font.zig");
+const font = @import("font.zig"); // Keep for fallback or constants if needed
 const vec3 = @import("pixelflow/vec3.zig");
 const scene3d = @import("pixelflow/scene3d.zig");
+const atlas_mod = @import("pixelflow/fonts/atlas.zig");
 
 pub const SCALE: f32 = 2.0;
-pub const CHAR_WIDTH: f32 = @as(f32, font.FONT_WIDTH) * SCALE;
-pub const CHAR_HEIGHT: f32 = @as(f32, font.FONT_HEIGHT) * SCALE;
+// We target roughly 16x32 pixels
+pub const FONT_SIZE: u32 = 32;
+pub const CHAR_WIDTH: f32 = 16.0;
+pub const CHAR_HEIGHT: f32 = 32.0;
 
 pub const TITLE_BAR_HEIGHT: usize = 30;
 pub const CLOSE_BUTTON_SIZE: usize = 30;
@@ -19,6 +22,7 @@ const TerminalContext = struct {
     terminal_grid: *grid.Grid,
     cursor_x: usize,
     cursor_y: usize,
+    atlas: *atlas_mod.Atlas,
     
     // Background info
     overall_bg_ctx: struct {
@@ -45,7 +49,11 @@ const CellRenderContext = struct {
     bg_b: f32,
     is_bold: bool,
     is_inverse: bool,
-    character_bitmap: [font.FONT_HEIGHT]u8,
+    glyph_bitmap: []const u8,
+    glyph_width: usize,
+    glyph_height: usize,
+    glyph_bearing_x: i32,
+    glyph_bearing_y: i32,
     cell_pixel_x: f32,
     cell_pixel_y: f32,
 };
@@ -80,22 +88,38 @@ const CellEvaluator = struct {
             const ly_scalar = local_y_arr[lane_idx];
 
             if (lx_scalar >= 0 and lx_scalar < CHAR_WIDTH and ly_scalar >= 0 and ly_scalar < CHAR_HEIGHT) {
-                const font_row_idx = @as(usize, @intFromFloat(ly_scalar / SCALE));
-                const font_col_idx = @as(usize, @intFromFloat(lx_scalar / SCALE));
+                // Map to glyph texture coordinates
+                // Glyph bearing X is left offset. Y is top offset from baseline?
+                // We center the glyph in the cell?
+                // Or standard baseline.
+                // Let's assume baseline at say 24px down.
+                const baseline_y = 24.0;
                 
-                if (font_row_idx < font.FONT_HEIGHT and font_col_idx < font.FONT_WIDTH) {
-                    const row_byte = c.character_bitmap[font_row_idx];
-                    const is_pixel_set = (row_byte >> @as(u3, @intCast(font.FONT_WIDTH - 1 - font_col_idx))) & 0x01;
-
-                    if (is_pixel_set != 0) {
-                        final_r_arr[lane_idx] = fg_r_arr[lane_idx];
-                        final_g_arr[lane_idx] = fg_g_arr[lane_idx];
-                        final_b_arr[lane_idx] = fg_b_arr[lane_idx];
-                        
-                        if (c.is_bold) {
-                            final_r_arr[lane_idx] = @min(1.0, fg_r_arr[lane_idx] * 1.2);
-                            final_g_arr[lane_idx] = @min(1.0, fg_g_arr[lane_idx] * 1.2);
-                            final_b_arr[lane_idx] = @min(1.0, fg_b_arr[lane_idx] * 1.2);
+                // Texture X = lx - bearing_x ? 
+                // Wait, bearing_x is offset from pen pos. Pen is at 0 (left of cell).
+                // So Tex X = lx - bearing_x.
+                // Tex Y: bearing_y is distance from baseline up to top.
+                // So Top is at baseline - bearing_y.
+                // Tex Y = ly - (baseline - bearing_y).
+                
+                const tex_x_f = lx_scalar - @as(f32, @floatFromInt(c.glyph_bearing_x));
+                const tex_y_f = ly_scalar - (baseline_y - @as(f32, @floatFromInt(c.glyph_bearing_y)));
+                
+                if (tex_x_f >= 0 and tex_y_f >= 0) {
+                    const tex_x = @as(usize, @intFromFloat(tex_x_f));
+                    const tex_y = @as(usize, @intFromFloat(tex_y_f));
+                    
+                    if (tex_x < c.glyph_width and tex_y < c.glyph_height) {
+                        const alpha = c.glyph_bitmap[tex_y * c.glyph_width + tex_x];
+                        if (alpha > 0) {
+                            const a = @as(f32, @floatFromInt(alpha)) / 255.0;
+                            // Blend
+                            // out = fg * a + bg * (1-a)
+                            final_r_arr[lane_idx] = fg_r_arr[lane_idx] * a + bg_r_arr[lane_idx] * (1.0 - a);
+                            final_g_arr[lane_idx] = fg_g_arr[lane_idx] * a + bg_g_arr[lane_idx] * (1.0 - a);
+                            final_b_arr[lane_idx] = fg_b_arr[lane_idx] * a + bg_b_arr[lane_idx] * (1.0 - a);
+                            
+                            // Bold? (Smear x+1) - omit for now, vector font has weight
                         }
                     }
                 }
@@ -160,17 +184,8 @@ fn draw_terminal_slice(ctx: TerminalContext, width_px: usize, out_slice: []u32, 
         pf.evaluate(TerminalEvaluator.fill_eval, ctx, 0.0, @as(f32, @floatFromInt(y_global)), row_slice);
     }
 
-    // Cells
-    // We iterate over the full grid, but only draw cells that overlap with this slice
-    // Optimization: Calculate row index range
-    // Slice Y range: [y_start_global, y_start_global + height_slice)
-    
-    // Each char row is CHAR_HEIGHT pixels.
-    // Terminal grid Y start is TITLE_BAR_HEIGHT.
-    
     const slice_min_y = @as(f32, @floatFromInt(y_start_global));
     const slice_max_y = @as(f32, @floatFromInt(y_start_global + height_slice));
-    
     const term_offset = @as(f32, @floatFromInt(TITLE_BAR_HEIGHT));
 
     // Iterate grid rows
@@ -178,67 +193,72 @@ fn draw_terminal_slice(ctx: TerminalContext, width_px: usize, out_slice: []u32, 
         const cell_top_y = @as(f32, @floatFromInt(row_idx)) * CHAR_HEIGHT + term_offset;
         const cell_bottom_y = cell_top_y + CHAR_HEIGHT;
         
-        // Check overlap
         if (cell_bottom_y <= slice_min_y or cell_top_y >= slice_max_y) continue;
         
         for (0..ctx.terminal_grid.width) |col_idx| {
             const cell = ctx.terminal_grid.cells[row_idx * ctx.terminal_grid.width + col_idx];
             
             const pixel_x_start = @as(f32, @floatFromInt(col_idx)) * CHAR_WIDTH;
-            const pixel_y_start = cell_top_y; // Global Y start of cell
+            const pixel_y_start = cell_top_y; 
 
-            const is_cursor_cell = col_idx == ctx.cursor_x and row_idx == ctx.cursor_y;
-
-            var fg_color_val = cell.fg_color;
-            var bg_color_val = cell.bg_color;
-            var is_inverse_val = cell.is_inverse;
-
-            if (is_cursor_cell) is_inverse_val = !is_inverse_val;
-            if (is_inverse_val) {
-                const temp_c = fg_color_val;
-                fg_color_val = bg_color_val;
-                bg_color_val = temp_c;
-            }
-
-            const cell_ctx = CellRenderContext{
-                .fg_r = @as(f32, @floatFromInt(fg_color_val.r)) / 255.0,
-                .fg_g = @as(f32, @floatFromInt(fg_color_val.g)) / 255.0,
-                .fg_b = @as(f32, @floatFromInt(fg_color_val.b)) / 255.0,
-                .bg_r = @as(f32, @floatFromInt(bg_color_val.r)) / 255.0,
-                .bg_g = @as(f32, @floatFromInt(bg_color_val.g)) / 255.0,
-                .bg_b = @as(f32, @floatFromInt(bg_color_val.b)) / 255.0,
-                .is_bold = cell.is_bold,
-                .is_inverse = is_inverse_val,
-                .character_bitmap = if (cell.character < font.BITMAP_FONT.len) font.BITMAP_FONT[cell.character] else font.BITMAP_FONT['?'],
-                .cell_pixel_x = pixel_x_start,
-                .cell_pixel_y = pixel_y_start,
-            };
-
-            const char_height_usize: usize = @as(usize, @intFromFloat(CHAR_HEIGHT));
-            const char_width_usize: usize = @as(usize, @intFromFloat(CHAR_WIDTH));
+            // Lookup Cached Glyph (Must be pre-populated!)
+            // We use getPtr assuming it's there. If not, it crashes or returns null?
+            // Atlas uses HashMap. getPtr returns ?*V.
+            // We'll rely on it being there.
+            const glyph_ptr = ctx.atlas.cache.getPtr(atlas_mod.GlyphKey{ .codepoint = cell.character, .size = FONT_SIZE });
             
-            // Draw pixel rows of the character
-            for (0..char_height_usize) |char_row_offset| {
-                const current_pixel_y = pixel_y_start + @as(f32, @floatFromInt(char_row_offset));
+            if (glyph_ptr) |glyph| {
+                const is_cursor_cell = col_idx == ctx.cursor_x and row_idx == ctx.cursor_y;
+
+                var fg_color_val = cell.fg_color;
+                var bg_color_val = cell.bg_color;
+                var is_inverse_val = cell.is_inverse;
+
+                if (is_cursor_cell) is_inverse_val = !is_inverse_val;
+                if (is_inverse_val) {
+                    const temp_c = fg_color_val;
+                    fg_color_val = bg_color_val;
+                    bg_color_val = temp_c;
+                }
+
+                const cell_ctx = CellRenderContext{
+                    .fg_r = @as(f32, @floatFromInt(fg_color_val.r)) / 255.0,
+                    .fg_g = @as(f32, @floatFromInt(fg_color_val.g)) / 255.0,
+                    .fg_b = @as(f32, @floatFromInt(fg_color_val.b)) / 255.0,
+                    .bg_r = @as(f32, @floatFromInt(bg_color_val.r)) / 255.0,
+                    .bg_g = @as(f32, @floatFromInt(bg_color_val.g)) / 255.0,
+                    .bg_b = @as(f32, @floatFromInt(bg_color_val.b)) / 255.0,
+                    .is_bold = cell.is_bold,
+                    .is_inverse = is_inverse_val,
+                    .glyph_bitmap = glyph.bitmap,
+                    .glyph_width = glyph.width,
+                    .glyph_height = glyph.height,
+                    .glyph_bearing_x = glyph.bearing_x,
+                    .glyph_bearing_y = glyph.bearing_y,
+                    .cell_pixel_x = pixel_x_start,
+                    .cell_pixel_y = pixel_y_start,
+                };
+
+                const char_height_usize: usize = @as(usize, @intFromFloat(CHAR_HEIGHT));
+                const char_width_usize: usize = @as(usize, @intFromFloat(CHAR_WIDTH));
                 
-                // If this row is outside our slice, skip
-                if (current_pixel_y < slice_min_y or current_pixel_y >= slice_max_y) continue;
-                
-                // Determine index in slice buffer
-                // slice_y = global_y - y_start_global
-                const slice_y_idx = @as(usize, @intFromFloat(current_pixel_y - slice_min_y));
-                const current_row_start_idx = slice_y_idx * width_px + @as(usize, @intFromFloat(pixel_x_start));
-                
-                if (current_row_start_idx + char_width_usize <= out_slice.len) {
-                    const pixel_slice = out_slice[current_row_start_idx .. current_row_start_idx + char_width_usize];
-                    pf.evaluate(CellEvaluator.eval, cell_ctx, pixel_x_start, current_pixel_y, pixel_slice);
+                for (0..char_height_usize) |char_row_offset| {
+                    const current_pixel_y = pixel_y_start + @as(f32, @floatFromInt(char_row_offset));
+                    if (current_pixel_y < slice_min_y or current_pixel_y >= slice_max_y) continue;
+                    
+                    const slice_y_idx = @as(usize, @intFromFloat(current_pixel_y - slice_min_y));
+                    const current_row_start_idx = slice_y_idx * width_px + @as(usize, @intFromFloat(pixel_x_start));
+                    
+                    if (current_row_start_idx + char_width_usize <= out_slice.len) {
+                        const pixel_slice = out_slice[current_row_start_idx .. current_row_start_idx + char_width_usize];
+                        pf.evaluate(CellEvaluator.eval, cell_ctx, pixel_x_start, current_pixel_y, pixel_slice);
+                    }
                 }
             }
         }
     }
     
     // Draw Title Bar (if overlaps slice)
-    // Title bar is 0 to TITLE_BAR_HEIGHT
     if (y_start_global < TITLE_BAR_HEIGHT) {
         const tb_ctx = TitleBarContext{ 
             .w = @as(f32, @floatFromInt(ctx.width_px)), 
@@ -257,14 +277,26 @@ fn draw_terminal_slice(ctx: TerminalContext, width_px: usize, out_slice: []u32, 
     }
 }
 
-pub fn draw_demo_pattern(allocator: std.mem.Allocator, width_px: i32, height_px: i32, time: f32, out_buffer: []u32, terminal_grid: *grid.Grid, cursor_x: usize, cursor_y: usize) !void {
+pub fn draw_demo_pattern(allocator: std.mem.Allocator, width_px: i32, height_px: i32, time: f32, out_buffer: []u32, terminal_grid: *grid.Grid, cursor_x: usize, cursor_y: usize, atlas: *atlas_mod.Atlas) !void {
     _ = time;
+    
+    // Pre-populate Atlas Cache
+    // Iterate all unique characters in the grid and ensure they are cached
+    // Optimization: Just iterate and call ensureCached.
+    for (terminal_grid.cells) |cell| {
+        try atlas.ensureCached(cell.character, FONT_SIZE);
+    }
+    // Also ensure '?' and ' '
+    try atlas.ensureCached('?', FONT_SIZE);
+    try atlas.ensureCached(' ', FONT_SIZE);
+
     const ctx = TerminalContext{
         .width_px = width_px,
         .height_px = height_px,
         .terminal_grid = terminal_grid,
         .cursor_x = cursor_x,
         .cursor_y = cursor_y,
+        .atlas = atlas,
         .overall_bg_ctx = .{ .r = @splat(0.1), .g = @splat(0.1), .b = @splat(0.1) },
     };
 
@@ -284,6 +316,79 @@ pub fn draw_demo_pattern(allocator: std.mem.Allocator, width_px: i32, height_px:
         
         const slice = out_buffer[start_y * @as(usize, @intCast(width_px)) .. end_y * @as(usize, @intCast(width_px))];
         threads[i] = try std.Thread.spawn(.{}, draw_terminal_slice, .{ ctx, @as(usize, @intCast(width_px)), slice, start_y });
+    }
+    
+    for (threads) |t| t.join();
+}
+
+fn empty_worker() void {}
+
+// --- Sphere Demo ---
+
+const SphereContext = struct {
+    w: f32,
+    h: f32,
+    t: f32,
+};
+
+const SphereEvaluator = struct {
+    pub fn eval(c: SphereContext, x: pf.Field, y: pf.Field) struct { r: pf.Field, g: pf.Field, b: pf.Field, a: pf.Field } {
+        // ... (Original logic) ...
+        const ndc_x = (x / pf.Core.constant(c.w)) * pf.Core.constant(2.0) - pf.Core.constant(1.0);
+        const ndc_y = (pf.Core.constant(1.0) - (y / pf.Core.constant(c.h)) * pf.Core.constant(2.0)); 
+        const aspect = c.w / c.h;
+        const screen_x = ndc_x * pf.Core.constant(aspect);
+        const screen_y = ndc_y;
+
+        const cam_origin = vec3.Vec3.init(pf.Core.constant(0.0), pf.Core.constant(1.0), pf.Core.constant(-4.0));
+        const screen_point = vec3.Vec3.init(screen_x, screen_y, pf.Core.constant(-2.0));
+        const ray_dir = screen_point.sub(cam_origin).normalize();
+        const ray = scene3d.Ray{ .origin = cam_origin, .dir = ray_dir };
+
+        const sphere_x = @sin(pf.Core.constant(c.t)) * pf.Core.constant(2.0);
+        const sphere_z = @cos(pf.Core.constant(c.t)) * pf.Core.constant(0.5); 
+        const sphere = scene3d.Sphere{
+            .center = vec3.Vec3.init(sphere_x, pf.Core.constant(0.0), sphere_z),
+            .radius = pf.Core.constant(1.0),
+        };
+        const plane = scene3d.Plane{ .height = pf.Core.constant(-1.0) };
+
+        const color = scene3d.render_scene(ray, sphere, plane);
+        return .{ .r = color.r, .g = color.g, .b = color.b, .a = @splat(1.0) };
+    }
+};
+
+fn draw_sphere_slice(ctx: SphereContext, width_px: usize, out_slice: []u32, y_start_global: usize) void {
+    const height_slice = out_slice.len / width_px;
+    for (0..height_slice) |y_local| {
+        const y_global = y_start_global + y_local;
+        const row_offset = y_local * width_px;
+        const row_slice = out_slice[row_offset .. row_offset + width_px];
+        pf.evaluate(SphereEvaluator.eval, ctx, 0.0, @as(f32, @floatFromInt(y_global)), row_slice);
+    }
+}
+
+pub fn draw_sphere_demo(allocator: std.mem.Allocator, width_px: i32, height_px: i32, time: f32, out_buffer: []u32) !void {
+    const w_f = @as(f32, @floatFromInt(width_px));
+    const h_f = @as(f32, @floatFromInt(height_px));
+    const ctx = SphereContext{ .w = w_f, .h = h_f, .t = time };
+
+    const num_threads = 12;
+    const rows_per_thread = @as(usize, @intCast(height_px)) / num_threads + 1;
+    var threads = try allocator.alloc(std.Thread, num_threads);
+    defer allocator.free(threads);
+
+    for (0..num_threads) |i| {
+        const start_y = i * rows_per_thread;
+        if (start_y >= height_px) {
+            threads[i] = try std.Thread.spawn(.{}, empty_worker, .{});
+            continue;
+        }
+        var end_y = (i + 1) * rows_per_thread;
+        if (end_y > height_px) end_y = @as(usize, @intCast(height_px));
+        
+        const slice = out_buffer[start_y * @as(usize, @intCast(width_px)) .. end_y * @as(usize, @intCast(width_px))];
+        threads[i] = try std.Thread.spawn(.{}, draw_sphere_slice, .{ ctx, @as(usize, @intCast(width_px)), slice, start_y });
     }
     
     for (threads) |t| t.join();
