@@ -133,7 +133,36 @@ pub const AnalyticalQuad = struct {
     }
 
     pub fn eval(self: AnalyticalQuad, x: Field, y: Field) Field {
-        _ = self; _ = x; _ = y;
-        return Core.constant(0.0);
+        if (self.is_linear) return Core.constant(0.0);
+
+        const ux = Core.constant(self.u_x); const uy = Core.constant(self.u_y); const uc = Core.constant(self.u_c);
+        const vx = Core.constant(self.v_x); const vy = Core.constant(self.v_y); const vc = Core.constant(self.v_c);
+        const wx = Core.constant(self.w_x); const wy = Core.constant(self.w_y); const wc = Core.constant(self.w_c);
+
+        const u = x * ux + y * uy + uc;
+        const v = x * vx + y * vy + vc;
+        const w = x * wx + y * wy + wc;
+
+        const f = u * u - v * w;
+
+        const two = Core.constant(2.0);
+        const grad_x = u * (two * ux) - v * wx - w * vx;
+        const grad_y = u * (two * uy) - v * wy - w * vy;
+
+        const grad_sq = grad_x * grad_x + grad_y * grad_y;
+        const grad_mag = Core.sqrt(grad_sq);
+        
+        // Avoid div by zero
+        const safe_grad = @max(grad_mag, Core.constant(1e-6));
+        const scaled_f = f / safe_grad;
+
+        // Coverage
+        const zero = Core.constant(0.0);
+        const one = Core.constant(1.0);
+        const half = Core.constant(0.5);
+        
+        const coverage = @min(one, @max(zero, scaled_f * Core.constant(-1.0) + half));
+        
+        return coverage * Core.constant(self.orientation);
     }
 };
