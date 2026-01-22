@@ -88,12 +88,9 @@ const CellEvaluator = struct {
             const ly_scalar = local_y_arr[lane_idx];
 
             if (lx_scalar >= 0 and lx_scalar < CHAR_WIDTH and ly_scalar >= 0 and ly_scalar < CHAR_HEIGHT) {
-                // Center glyph bitmap within cell
-                const offset_x = (CHAR_WIDTH - @as(f32, @floatFromInt(c.glyph_width))) / 2.0;
-                const offset_y = (CHAR_HEIGHT - @as(f32, @floatFromInt(c.glyph_height))) / 2.0;
-                
-                const tex_x_f = lx_scalar - offset_x;
-                const tex_y_f = ly_scalar - offset_y;
+                // Map to glyph texture coordinates: align glyph's scaled (x_min, y_max) with cell
+                const tex_x_f = lx_scalar - @as(f32, @floatFromInt(c.glyph_bearing_x));
+                const tex_y_f = ly_scalar - @as(f32, @floatFromInt(c.glyph_bearing_y));
                 
                 if (tex_x_f >= 0 and tex_y_f >= 0) {
                     const tex_x = @as(usize, @intFromFloat(tex_x_f));
