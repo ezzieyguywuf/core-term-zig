@@ -36,10 +36,13 @@ pub const GlyphLoader = struct {
         const offset = try self.font.getGlyphOffset(glyph_index);
         const len = try self.font.getGlyphLen(glyph_index);
         
+        const LineList = std.ArrayList(AnalyticalLine);
+        const QuadList = std.ArrayList(AnalyticalQuad);
+
         if (len == 0) {
             return GlyphGeometry{
-                .lines = std.ArrayList(AnalyticalLine).init(self.allocator),
-                .quads = std.ArrayList(AnalyticalQuad).init(self.allocator),
+                .lines = LineList.init(self.allocator),
+                .quads = QuadList.init(self.allocator),
                 .x_min = 0, .y_min = 0, .x_max = 0, .y_max = 0,
             };
         }
@@ -54,8 +57,8 @@ pub const GlyphLoader = struct {
         const y_max = try r.readI16();
 
         var geom = GlyphGeometry{
-            .lines = std.ArrayList(AnalyticalLine).init(self.allocator),
-            .quads = std.ArrayList(AnalyticalQuad).init(self.allocator),
+            .lines = LineList.init(self.allocator),
+            .quads = QuadList.init(self.allocator),
             .x_min = x_min, .y_min = y_min, .x_max = x_max, .y_max = y_max,
         };
 
