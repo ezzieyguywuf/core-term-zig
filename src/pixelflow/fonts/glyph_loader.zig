@@ -222,37 +222,44 @@ pub const GlyphLoader = struct {
                                     i += 1;
                                 } else {
                                     // Quad: On -> Off -> On
-                                    if (i + 2 >= temp_points.items.len) break;
-                                    const p2 = temp_points.items[i+2];
-                
-                                    // Subdivide quadratic bezier into lines for debugging
-                                    const num_subdivisions: usize = 4;
-                                    var prev_p: [2]f32 = .{ @floatFromInt(p0.x), @floatFromInt(p0.y) };
-                
-                                    for (0..num_subdivisions) |j| {
-                                        const t_step = @as(f32, @floatFromInt(j + 1)) / @as(f32, @floatFromInt(num_subdivisions));
-                                        
-                                        // Evaluate Bezier at t_step
-                                        // B(t) = (1-t)^2 P0 + 2(1-t)t P1 + t^2 P2
-                                        const one_minus_t = 1.0 - t_step;
-                                        const t_sq = t_step * t_step;
-                                        const omt_sq = one_minus_t * one_minus_t;
-                
-                                        const b_x = omt_sq * @as(f32, @floatFromInt(p0.x)) +
-                                                      2.0 * one_minus_t * t_step * @as(f32, @floatFromInt(p1.x)) +
-                                                      t_sq * @as(f32, @floatFromInt(p2.x));
-                                        const b_y = omt_sq * @as(f32, @floatFromInt(p0.y)) +
-                                                      2.0 * one_minus_t * t_step * @as(f32, @floatFromInt(p1.y)) +
-                                                      t_sq * @as(f32, @floatFromInt(p2.y));
-                                        
-                                        const curr_p: [2]f32 = .{b_x, b_y};
-                                        if (AnalyticalLine.new(prev_p, curr_p)) |line| {
-                                            try geom.lines.append(allocator, line);
-                                        }
-                                        prev_p = curr_p;
-                                    }
-                                    i += 2;
-                                }
-                            }
-                        }
-                    };
+                                                        if (i + 2 >= temp_points.items.len) break;
+                                                        const p2 = temp_points.items[i+2];
+                                    
+                                                        // Debug: Log Bezier Control Points
+                                                        std.debug.print("Bezier P0: ({d},{d}), P1: ({d},{d}), P2: ({d},{d})\n", .{p0.x, p0.y, p1.x, p1.y, p2.x, p2.y});
+                                    
+                                                        // Subdivide quadratic bezier into lines for debugging
+                                                        const num_subdivisions: usize = 4;
+                                                        var prev_p: [2]f32 = .{ @floatFromInt(p0.x), @floatFromInt(p0.y) };
+                                    
+                                                        for (0..num_subdivisions) |j| {
+                                                            const t_step = @as(f32, @floatFromInt(j + 1)) / @as(f32, @floatFromInt(num_subdivisions));
+                                                            
+                                                            // Evaluate Bezier at t_step
+                                                            // B(t) = (1-t)^2 P0 + 2(1-t)t P1 + t^2 P2
+                                                            const one_minus_t = 1.0 - t_step;
+                                                            const t_sq = t_step * t_step;
+                                                            const omt_sq = one_minus_t * one_minus_t;
+                                    
+                                                            const b_x = omt_sq * @as(f32, @floatFromInt(p0.x)) +
+                                                                          2.0 * one_minus_t * t_step * @as(f32, @floatFromInt(p1.x)) +
+                                                                          t_sq * @as(f32, @floatFromInt(p2.x));
+                                                            const b_y = omt_sq * @as(f32, @floatFromInt(p0.y)) +
+                                                                          2.0 * one_minus_t * t_step * @as(f32, @floatFromInt(p1.y)) +
+                                                                          t_sq * @as(f32, @floatFromInt(p2.y));
+                                                            
+                                                            const curr_p: [2]f32 = .{b_x, b_y};
+                                    
+                                                            // Debug: Log generated line segment
+                                                            std.debug.print("  Line segment: ({d:.2},{d:.2}) -> ({d:.2},{d:.2})\n", .{prev_p[0], prev_p[1], curr_p[0], curr_p[1]});
+                                    
+                                                            if (AnalyticalLine.new(prev_p, curr_p)) |line| {
+                                                                try geom.lines.append(allocator, line);
+                                                            }
+                                                            prev_p = curr_p;
+                                                        }
+                                                        i += 2;
+                                                    }
+                                                }
+                                            }
+                                        };
