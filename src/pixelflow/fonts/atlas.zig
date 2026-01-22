@@ -59,7 +59,7 @@ pub const Atlas = struct {
         if (glyph_index == 0) return self.makeEmpty();
 
         var geom = try self.loader.load(glyph_index);
-        defer geom.deinit();
+        defer geom.deinit(self.allocator);
 
         // Calculate scale
         // units_per_em -> size pixels

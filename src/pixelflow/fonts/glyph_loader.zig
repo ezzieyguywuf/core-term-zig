@@ -12,9 +12,9 @@ pub const GlyphGeometry = struct {
     x_max: i16,
     y_max: i16,
 
-    pub fn deinit(self: *GlyphGeometry) void {
-        self.lines.deinit();
-        self.quads.deinit();
+    pub fn deinit(self: *GlyphGeometry, allocator: std.mem.Allocator) void {
+        self.lines.deinit(allocator);
+        self.quads.deinit(allocator);
     }
 };
 
@@ -170,7 +170,7 @@ pub const GlyphLoader = struct {
         if (points.len == 0) return;
 
         var temp_points = try std.ArrayList(Point).initCapacity(self.allocator, points.len);
-        defer temp_points.deinit();
+        defer temp_points.deinit(self.allocator);
 
         // Find index of first on-curve point
         var start_idx: usize = 0;
