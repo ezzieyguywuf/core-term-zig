@@ -112,6 +112,19 @@ pub const Atlas = struct {
             }
         }
 
+        // Debug: ASCII Dump for 'e'
+        if (codepoint == 101) {
+            std.debug.print("Rasterized 'e': width={d} height={d} x_min={d} y_max={d}\n", .{width, height, x_min, y_max});
+            for (0..height) |iy| {
+                for (0..width) |ix| {
+                    const val = bitmap[iy * width + ix];
+                    const char: u8 = if (val > 128) '#' else if (val > 0) ':' else '.';
+                    std.debug.print("{c}", .{char});
+                }
+                std.debug.print("\n", .{});
+            }
+        }
+
         return CachedGlyph{
             .bitmap = bitmap,
             .width = width,
