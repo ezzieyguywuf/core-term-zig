@@ -18,10 +18,26 @@ pub const AnalyticalLine = struct {
 
         if (len < 1e-6) return null;
 
-        const a = dy / len;
-        const b = -dx / len;
-        const c = -(a * p0[0] + b * p0[1]);
-        const dir: f32 = if (dy > 0.0) -1.0 else 1.0;
+        var a = dy / len;
+        var b = -dx / len;
+        var c = -(a * p0[0] + b * p0[1]);
+        
+        // Normalize so 'a' is positive (Right side covered logic)
+        // If a < 0, f decreases with x. f > 0 for small x. Cov = 0.5 - f < 0. Left Covered.
+        // We want Right Covered (x < x_line -> Cov=1).
+        // So we need f < 0 for small x.
+        // So a must be positive.
+        if (a < 0) {
+            a = -a;
+            b = -b;
+            c = -c;
+        }
+
+        // Winding direction: Up=+1, Down=-1. Horizontal=0.
+        // Note: Ray marching winding usually sums intersections to the right.
+        // Up line (dy>0) crossing: +1.
+        // Down line (dy<0) crossing: -1.
+        const dir: f32 = if (dy > 1e-6) 1.0 else if (dy < -1e-6) -1.0 else 0.0;
 
         return AnalyticalLine{
             .a = a,
