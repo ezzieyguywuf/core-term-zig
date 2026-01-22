@@ -2,7 +2,7 @@ const std = @import("std");
 const pf = @import("pixelflow/core.zig");
 const shapes = @import("pixelflow/shapes.zig");
 const grid = @import("terminal/grid.zig");
-const font = @import("font.zig"); // Keep for fallback or constants if needed
+const font = @import("font.zig");
 const vec3 = @import("pixelflow/vec3.zig");
 const scene3d = @import("pixelflow/scene3d.zig");
 const atlas_mod = @import("pixelflow/fonts/atlas.zig");
@@ -89,18 +89,7 @@ const CellEvaluator = struct {
 
             if (lx_scalar >= 0 and lx_scalar < CHAR_WIDTH and ly_scalar >= 0 and ly_scalar < CHAR_HEIGHT) {
                 // Map to glyph texture coordinates
-                // Glyph bearing X is left offset. Y is top offset from baseline?
-                // We center the glyph in the cell?
-                // Or standard baseline.
-                // Let's assume baseline at say 24px down.
                 const baseline_y = 24.0;
-                
-                // Texture X = lx - bearing_x ? 
-                // Wait, bearing_x is offset from pen pos. Pen is at 0 (left of cell).
-                // So Tex X = lx - bearing_x.
-                // Tex Y: bearing_y is distance from baseline up to top.
-                // So Top is at baseline - bearing_y.
-                // Tex Y = ly - (baseline - bearing_y).
                 
                 const tex_x_f = lx_scalar - @as(f32, @floatFromInt(c.glyph_bearing_x));
                 const tex_y_f = ly_scalar - (baseline_y - @as(f32, @floatFromInt(c.glyph_bearing_y)));
@@ -118,8 +107,6 @@ const CellEvaluator = struct {
                             final_r_arr[lane_idx] = fg_r_arr[lane_idx] * a + bg_r_arr[lane_idx] * (1.0 - a);
                             final_g_arr[lane_idx] = fg_g_arr[lane_idx] * a + bg_g_arr[lane_idx] * (1.0 - a);
                             final_b_arr[lane_idx] = fg_b_arr[lane_idx] * a + bg_b_arr[lane_idx] * (1.0 - a);
-                            
-                            // Bold? (Smear x+1) - omit for now, vector font has weight
                         }
                     }
                 }
@@ -202,9 +189,6 @@ fn draw_terminal_slice(ctx: TerminalContext, width_px: usize, out_slice: []u32, 
             const pixel_y_start = cell_top_y; 
 
             // Lookup Cached Glyph (Must be pre-populated!)
-            // We use getPtr assuming it's there. If not, it crashes or returns null?
-            // Atlas uses HashMap. getPtr returns ?*V.
-            // We'll rely on it being there.
             const glyph_ptr = ctx.atlas.cache.getPtr(atlas_mod.GlyphKey{ .codepoint = cell.character, .size = FONT_SIZE });
             
             if (glyph_ptr) |glyph| {
@@ -281,12 +265,9 @@ pub fn draw_demo_pattern(allocator: std.mem.Allocator, width_px: i32, height_px:
     _ = time;
     
     // Pre-populate Atlas Cache
-    // Iterate all unique characters in the grid and ensure they are cached
-    // Optimization: Just iterate and call ensureCached.
     for (terminal_grid.cells) |cell| {
         try atlas.ensureCached(cell.character, FONT_SIZE);
     }
-    // Also ensure '?' and ' '
     try atlas.ensureCached('?', FONT_SIZE);
     try atlas.ensureCached(' ', FONT_SIZE);
 
@@ -333,80 +314,6 @@ const SphereContext = struct {
 
 const SphereEvaluator = struct {
     pub fn eval(c: SphereContext, x: pf.Field, y: pf.Field) struct { r: pf.Field, g: pf.Field, b: pf.Field, a: pf.Field } {
-        // ... (Original logic) ...
-        const ndc_x = (x / pf.Core.constant(c.w)) * pf.Core.constant(2.0) - pf.Core.constant(1.0);
-        const ndc_y = (pf.Core.constant(1.0) - (y / pf.Core.constant(c.h)) * pf.Core.constant(2.0)); 
-        const aspect = c.w / c.h;
-        const screen_x = ndc_x * pf.Core.constant(aspect);
-        const screen_y = ndc_y;
-
-        const cam_origin = vec3.Vec3.init(pf.Core.constant(0.0), pf.Core.constant(1.0), pf.Core.constant(-4.0));
-        const screen_point = vec3.Vec3.init(screen_x, screen_y, pf.Core.constant(-2.0));
-        const ray_dir = screen_point.sub(cam_origin).normalize();
-        const ray = scene3d.Ray{ .origin = cam_origin, .dir = ray_dir };
-
-        const sphere_x = @sin(pf.Core.constant(c.t)) * pf.Core.constant(2.0);
-        const sphere_z = @cos(pf.Core.constant(c.t)) * pf.Core.constant(0.5); 
-        const sphere = scene3d.Sphere{
-            .center = vec3.Vec3.init(sphere_x, pf.Core.constant(0.0), sphere_z),
-            .radius = pf.Core.constant(1.0),
-        };
-        const plane = scene3d.Plane{ .height = pf.Core.constant(-1.0) };
-
-        const color = scene3d.render_scene(ray, sphere, plane);
-        return .{ .r = color.r, .g = color.g, .b = color.b, .a = @splat(1.0) };
-    }
-};
-
-fn draw_sphere_slice(ctx: SphereContext, width_px: usize, out_slice: []u32, y_start_global: usize) void {
-    const height_slice = out_slice.len / width_px;
-    for (0..height_slice) |y_local| {
-        const y_global = y_start_global + y_local;
-        const row_offset = y_local * width_px;
-        const row_slice = out_slice[row_offset .. row_offset + width_px];
-        pf.evaluate(SphereEvaluator.eval, ctx, 0.0, @as(f32, @floatFromInt(y_global)), row_slice);
-    }
-}
-
-pub fn draw_sphere_demo(allocator: std.mem.Allocator, width_px: i32, height_px: i32, time: f32, out_buffer: []u32) !void {
-    const w_f = @as(f32, @floatFromInt(width_px));
-    const h_f = @as(f32, @floatFromInt(height_px));
-    const ctx = SphereContext{ .w = w_f, .h = h_f, .t = time };
-
-    const num_threads = 12;
-    const rows_per_thread = @as(usize, @intCast(height_px)) / num_threads + 1;
-    var threads = try allocator.alloc(std.Thread, num_threads);
-    defer allocator.free(threads);
-
-    for (0..num_threads) |i| {
-        const start_y = i * rows_per_thread;
-        if (start_y >= height_px) {
-            threads[i] = try std.Thread.spawn(.{}, empty_worker, .{});
-            continue;
-        }
-        var end_y = (i + 1) * rows_per_thread;
-        if (end_y > height_px) end_y = @as(usize, @intCast(height_px));
-        
-        const slice = out_buffer[start_y * @as(usize, @intCast(width_px)) .. end_y * @as(usize, @intCast(width_px))];
-        threads[i] = try std.Thread.spawn(.{}, draw_sphere_slice, .{ ctx, @as(usize, @intCast(width_px)), slice, start_y });
-    }
-    
-    for (threads) |t| t.join();
-}
-
-fn empty_worker() void {}
-
-// --- Sphere Demo ---
-
-const SphereContext = struct {
-    w: f32,
-    h: f32,
-    t: f32,
-};
-
-const SphereEvaluator = struct {
-    pub fn eval(c: SphereContext, x: pf.Field, y: pf.Field) struct { r: pf.Field, g: pf.Field, b: pf.Field, a: pf.Field } {
-        // ... (Original logic) ...
         const ndc_x = (x / pf.Core.constant(c.w)) * pf.Core.constant(2.0) - pf.Core.constant(1.0);
         const ndc_y = (pf.Core.constant(1.0) - (y / pf.Core.constant(c.h)) * pf.Core.constant(2.0)); 
         const aspect = c.w / c.h;
