@@ -10,7 +10,7 @@ const atlas_mod = @import("pixelflow/fonts/atlas.zig");
 pub const SCALE: f32 = 2.0;
 // We target roughly 16x32 pixels
 pub const FONT_SIZE: u32 = 32;
-pub const CHAR_WIDTH: f32 = 16.0;
+pub const CHAR_WIDTH: f32 = 20.0;
 pub const CHAR_HEIGHT: f32 = 32.0;
 
 pub const TITLE_BAR_HEIGHT: usize = 30;
