@@ -92,7 +92,7 @@ pub fn evaluate(comptime func: anytype, ctx: anytype, x: f32, y: f32, out: []u32
         // Prepare X and Y coordinates
         // xs = [x, x+1, x+2, ...]
         const xs = Core.sequential(x_start + @as(f32, @floatFromInt(i)));
-        const ys = @as(Field, @splat(y_start));
+        const ys = @as(Field, @splat(y));
 
         const rgba = func(ctx, xs, ys);
         const packed_pixels = Core.pack_rgba(rgba.r, rgba.g, rgba.b, rgba.a);
