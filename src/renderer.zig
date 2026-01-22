@@ -52,10 +52,10 @@ const CellRenderContext = struct {
     glyph_bitmap: []const u8,
     glyph_width: usize,
     glyph_height: usize,
-    glyph_bearing_x: i32,
-    glyph_bearing_y: i32,
-    cell_pixel_x: f32,
-    cell_pixel_y: f32,
+    scaled_x_min: f32,
+    scaled_y_max: f32,
+    scaled_ascent: f32,
+    scaled_descent: f32,
 };
 
 const CellEvaluator = struct {
@@ -80,23 +80,18 @@ const CellEvaluator = struct {
         var final_g_arr: [pf.LANES]f32 = bg_g_arr;
         var final_b_arr: [pf.LANES]f32 = bg_b_arr;
 
-        const local_x_arr: [pf.LANES]f32 = @as([pf.LANES]f32, x_p - pf.Core.constant(c.cell_pixel_x));
-        const local_y_arr: [pf.LANES]f32 = @as([pf.LANES]f32, y_p - pf.Core.constant(c.cell_pixel_y));
+        const local_x_arr: [pf.LANES]f32 = @as([pf.LANES]f32, x_p - pf.Core.constant(x_p[0])); // x_p[0] is x_start
+        const local_y_arr: [pf.LANES]f32 = @as([pf.LANES]f32, y_p - pf.Core.constant(y_p[0])); // y_p[0] is y_start
 
         for (0..pf.LANES) |lane_idx| {
             const lx_scalar = local_x_arr[lane_idx];
             const ly_scalar = local_y_arr[lane_idx];
 
-            if (lx_scalar >= 0 and lx_scalar < CHAR_WIDTH and ly_scalar >= 0 and ly_scalar < CHAR_HEIGHT) {
-                // Map to glyph texture coordinates: align glyph's scaled (x_min, y_max) with cell
-                const tex_x_f = lx_scalar - @as(f32, @floatFromInt(c.glyph_bearing_x));
-                const tex_y_f = ly_scalar - @as(f32, @floatFromInt(c.glyph_bearing_y));
-                
-                if (tex_x_f >= 0 and tex_y_f >= 0) {
-                    const tex_x = @as(usize, @intFromFloat(tex_x_f));
-                    const tex_y = @as(usize, @intFromFloat(tex_y_f));
+            if (lx_scalar >= 0 and lx_scalar < @as(f32, @floatFromInt(c.glyph_width)) and ly_scalar >= 0 and ly_scalar < @as(f32, @floatFromInt(c.glyph_height))) {
+                const tex_x = @as(usize, @intFromFloat(lx_scalar));
+                const tex_y = @as(usize, @intFromFloat(ly_scalar));
                     
-                    if (tex_x < c.glyph_width and tex_y < c.glyph_height) {
+                if (tex_x < c.glyph_width and tex_y < c.glyph_height) {
                         const alpha = c.glyph_bitmap[tex_y * c.glyph_width + tex_x];
                         if (alpha > 0) {
                             const a = @as(f32, @floatFromInt(alpha)) / 255.0;
@@ -206,7 +201,7 @@ fn draw_terminal_slice(ctx: TerminalContext, width_px: usize, out_slice: []u32, 
                 const cell_ctx = CellRenderContext{
                     .fg_r = @as(f32, @floatFromInt(fg_color_val.r)) / 255.0,
                     .fg_g = @as(f32, @floatFromInt(fg_color_val.g)) / 255.0,
-                    .fg_b = @as(f32, @floatFromInt(fg_color_val.b)) / 255.0,
+                    .fg_b = @as(f32, @floatFromInt(bg_color_val.b)) / 255.0,
                     .bg_r = @as(f32, @floatFromInt(bg_color_val.r)) / 255.0,
                     .bg_g = @as(f32, @floatFromInt(bg_color_val.g)) / 255.0,
                     .bg_b = @as(f32, @floatFromInt(bg_color_val.b)) / 255.0,
@@ -215,25 +210,35 @@ fn draw_terminal_slice(ctx: TerminalContext, width_px: usize, out_slice: []u32, 
                     .glyph_bitmap = glyph.bitmap,
                     .glyph_width = glyph.width,
                     .glyph_height = glyph.height,
-                    .glyph_bearing_x = glyph.bearing_x,
-                    .glyph_bearing_y = glyph.bearing_y,
-                    .cell_pixel_x = pixel_x_start,
-                    .cell_pixel_y = pixel_y_start,
+                    .scaled_x_min = glyph.scaled_x_min,
+                    .scaled_y_max = glyph.scaled_y_max,
+                    .scaled_ascent = glyph.scaled_ascent,
+                    .scaled_descent = glyph.scaled_descent,
                 };
+
+                // Calculate actual drawing offsets for the glyph bitmap
+                // Horizontally: center the glyph within its CHAR_WIDTH space, plus its x_min
+                const glyph_x_offset_in_cell = c.scaled_x_min + (CHAR_WIDTH - glyph.width) / 2.0;
+                const draw_x_start = pixel_x_start + glyph_x_offset_in_cell;
+
+                // Vertically: Align baseline. Bitmap y=0 is glyph.y_max.
+                // Baseline is at cell_top_y + scaled_ascent.
+                // Glyph bitmap origin (y=0) is at glyph.y_max. So place it at (baseline - glyph.y_max).
+                const draw_y_start = pixel_y_start + glyph.scaled_ascent - glyph.scaled_y_max; // Or maybe glyph.scaled_descent?
 
                 const char_height_usize: usize = @as(usize, @intFromFloat(CHAR_HEIGHT));
                 const char_width_usize: usize = @as(usize, @intFromFloat(CHAR_WIDTH));
                 
                 for (0..char_height_usize) |char_row_offset| {
-                    const current_pixel_y = pixel_y_start + @as(f32, @floatFromInt(char_row_offset));
-                    if (current_pixel_y < slice_min_y or current_pixel_y >= slice_max_y) continue;
+                    const current_pixel_y_global = pixel_y_start + @as(f32, @floatFromInt(char_row_offset));
+                    if (current_pixel_y_global < slice_min_y or current_pixel_y_global >= slice_max_y) continue;
                     
-                    const slice_y_idx = @as(usize, @intFromFloat(current_pixel_y - slice_min_y));
+                    const slice_y_idx = @as(usize, @intFromFloat(current_pixel_y_global - slice_min_y));
                     const current_row_start_idx = slice_y_idx * width_px + @as(usize, @intFromFloat(pixel_x_start));
                     
                     if (current_row_start_idx + char_width_usize <= out_slice.len) {
                         const pixel_slice = out_slice[current_row_start_idx .. current_row_start_idx + char_width_usize];
-                        pf.evaluate(CellEvaluator.eval, cell_ctx, pixel_x_start, current_pixel_y, pixel_slice);
+                        pf.evaluate(CellEvaluator.eval, cell_ctx, draw_x_start, draw_y_start, pixel_slice);
                     }
                 }
             }
