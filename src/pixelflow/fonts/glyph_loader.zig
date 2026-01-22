@@ -169,7 +169,7 @@ pub const GlyphLoader = struct {
     fn processContour(self: *GlyphLoader, points: []Point, geom: *GlyphGeometry) !void {
         if (points.len == 0) return;
 
-        var temp_points = std.ArrayList(Point).init(self.allocator);
+        var temp_points = try std.ArrayList(Point).initCapacity(self.allocator, points.len);
         defer temp_points.deinit();
 
         // Find index of first on-curve point
