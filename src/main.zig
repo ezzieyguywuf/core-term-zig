@@ -48,9 +48,8 @@ const RenderActor = struct {
         log.info("pixelflow_runtime::platform::linux::window", "X11: Xft.dpi = 192, scale = 2.00", .{});
         log.info("pixelflow_runtime::engine_troupe", "Relaying WindowCreated: id=6291457, {d}x{d}, scale=2", .{client.width, client.height});
 
-        // Load Font
-        // Ensure path is correct relative to CWD
-        const font_path = "assets/font/Noto_Sans_Mono/NotoSansMono-VariableFont_wdth,wght.ttf";
+        // Load Font from sibling project assets
+        const font_path = "../core-term/assets/font/Noto_Sans_Mono/NotoSansMono-VariableFont_wdth,wght.ttf";
         const file = try std.fs.cwd().openFile(font_path, .{});
         defer file.close();
         
