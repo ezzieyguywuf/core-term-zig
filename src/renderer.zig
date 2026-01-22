@@ -102,7 +102,6 @@ const CellEvaluator = struct {
                 }
             }
         }
-        }
 
         return .{ .r = @as(pf.Field, final_r_arr), .g = @as(pf.Field, final_g_arr), .b = @as(pf.Field, final_b_arr), .a = @splat(1.0) };
     }
