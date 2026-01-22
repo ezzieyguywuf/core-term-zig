@@ -161,16 +161,17 @@ pub const GlyphLoader = struct {
                 };
             }
 
-            try self.processContour(points, geom);
+            try self.processContour(points, geom, self.allocator);
             start_idx = end_idx + 1;
         }
     }
 
-    fn processContour(self: *GlyphLoader, points: []Point, geom: *GlyphGeometry) !void {
+    fn processContour(self: *GlyphLoader, points: []Point, geom: *GlyphGeometry, allocator: std.mem.Allocator) !void {
+        _ = self;
         if (points.len == 0) return;
 
-        var temp_points = try std.ArrayList(Point).initCapacity(self.allocator, points.len);
-        defer temp_points.deinit(self.allocator);
+        var temp_points = try std.ArrayList(Point).initCapacity(allocator, points.len);
+        defer temp_points.deinit(allocator);
 
         // Find index of first on-curve point
         var start_idx: usize = 0;
@@ -191,18 +192,18 @@ pub const GlyphLoader = struct {
             const curr = points[idx];
             const next = points[(idx + 1) % points.len];
 
-            try temp_points.append(curr);
+            try temp_points.append(allocator, curr);
 
             // If both this and next are off-curve, add implicit on-curve point at midpoint
             if (!curr.on_curve and !next.on_curve) {
                 const mid_x = (curr.x + next.x) >> 1;
                 const mid_y = (curr.y + next.y) >> 1;
-                try temp_points.append(Point{ .x = mid_x, .y = mid_y, .on_curve = true });
+                try temp_points.append(allocator, Point{ .x = mid_x, .y = mid_y, .on_curve = true });
             }
         }
         
         // Append the start point at the end to close the loop
-        try temp_points.append(temp_points.items[0]);
+        try temp_points.append(allocator, temp_points.items[0]);
 
         // Generate geometry
         var i: usize = 0;
@@ -216,7 +217,7 @@ pub const GlyphLoader = struct {
                     .{ @floatFromInt(p0.x), @floatFromInt(p0.y) }, 
                     .{ @floatFromInt(p1.x), @floatFromInt(p1.y) }
                 )) |line| {
-                    try geom.lines.append(line);
+                    try geom.lines.append(allocator, line);
                 }
                 i += 1;
             } else {
@@ -230,7 +231,7 @@ pub const GlyphLoader = struct {
                     .{ @floatFromInt(p1.x), @floatFromInt(p1.y) },
                     .{ @floatFromInt(p2.x), @floatFromInt(p2.y) }
                 );
-                try geom.quads.append(quad);
+                try geom.quads.append(allocator, quad);
                 i += 2;
             }
         }
