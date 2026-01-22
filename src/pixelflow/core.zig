@@ -84,7 +84,7 @@ pub const Core = struct {
 /// Manifold Interface equivalent
 /// In Zig, we can use comptime generics instead of Traits
 pub fn evaluate(comptime func: anytype, ctx: anytype, x: f32, y: f32, out: []u32) void {
-    var x_start = x;
+    const x_start = x;
 
     // Process output in chunks of LANES
     var i: usize = 0;
