@@ -219,21 +219,40 @@ pub const GlyphLoader = struct {
                 )) |line| {
                     try geom.lines.append(allocator, line);
                 }
-                i += 1;
-            } else {
-                // Quad: On -> Off -> On
-                // We know p1 is off-curve. Because we inserted implicit points, p2 MUST be on-curve.
-                if (i + 2 >= temp_points.items.len) break; // Should not happen with closed loop
-                const p2 = temp_points.items[i+2];
+                                    i += 1;
+                                } else {
+                                    // Quad: On -> Off -> On
+                                    if (i + 2 >= temp_points.items.len) break;
+                                    const p2 = temp_points.items[i+2];
                 
-                const quad = AnalyticalQuad.new(
-                    .{ @floatFromInt(p0.x), @floatFromInt(p0.y) },
-                    .{ @floatFromInt(p1.x), @floatFromInt(p1.y) },
-                    .{ @floatFromInt(p2.x), @floatFromInt(p2.y) }
-                );
-                try geom.quads.append(allocator, quad);
-                i += 2;
-            }
-        }
-    }
-};
+                                    // Subdivide quadratic bezier into lines for debugging
+                                    const num_subdivisions: usize = 4;
+                                    var prev_p: [2]f32 = .{ @floatFromInt(p0.x), @floatFromInt(p0.y) };
+                
+                                    for (0..num_subdivisions) |j| {
+                                        const t_step = @as(f32, @floatFromInt(j + 1)) / @as(f32, @floatFromInt(num_subdivisions));
+                                        
+                                        // Evaluate Bezier at t_step
+                                        // B(t) = (1-t)^2 P0 + 2(1-t)t P1 + t^2 P2
+                                        const one_minus_t = 1.0 - t_step;
+                                        const t_sq = t_step * t_step;
+                                        const omt_sq = one_minus_t * one_minus_t;
+                
+                                        const b_x = omt_sq * @as(f32, @floatFromInt(p0.x)) +
+                                                      2.0 * one_minus_t * t_step * @as(f32, @floatFromInt(p1.x)) +
+                                                      t_sq * @as(f32, @floatFromInt(p2.x));
+                                        const b_y = omt_sq * @as(f32, @floatFromInt(p0.y)) +
+                                                      2.0 * one_minus_t * t_step * @as(f32, @floatFromInt(p1.y)) +
+                                                      t_sq * @as(f32, @floatFromInt(p2.y));
+                                        
+                                        const curr_p: [2]f32 = .{b_x, b_y};
+                                        if (AnalyticalLine.new(prev_p, curr_p)) |line| {
+                                            try geom.lines.append(allocator, line);
+                                        }
+                                        prev_p = curr_p;
+                                    }
+                                    i += 2;
+                                }
+                            }
+                        }
+                    };
