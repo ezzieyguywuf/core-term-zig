@@ -107,6 +107,18 @@ pub const AnalyticalQuad = struct {
         const x2 = p2[0]; const y2 = p2[1];
 
         const det = x0 * (y1 - y2) - y0 * (x1 - x2) + (x1 * y2 - x2 * y1);
+        
+        if (@abs(det) < 1e-10) {
+            // Numerically unstable, return a degenerate quad (evaluates to 0)
+            return AnalyticalQuad{
+                .u_x = 0.0, .u_y = 0.0, .u_c = 0.0,
+                .v_x = 0.0, .v_y = 0.0, .v_c = 0.0,
+                .w_x = 0.0, .w_y = 0.0, .w_c = 0.0,
+                .is_linear = false, // Not truly linear, but degenerate
+                .orientation = 0.0,
+            };
+        }
+
         const inv_det = 1.0 / det;
 
         const u_x = inv_det * ((0.5 - 0.0) * (y2 - y0) + (1.0 - 0.5) * (y0 - y1));
