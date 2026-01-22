@@ -88,22 +88,29 @@ pub fn evaluate(comptime func: anytype, ctx: anytype, x: f32, y: f32, out: []u32
 
     // Process output in chunks of LANES
     var i: usize = 0;
-    while (i < out.len) : (i += LANES) {
-        if (i + LANES > out.len) break; // Handle remainder later if needed
+    while (i < out.len) {
+        // Prepare X and Y coordinates
+        // xs = [x, x+1, x+2, ...]
+        const xs = Core.sequential(x_start + @as(f32, @floatFromInt(i)));
+        const ys = @as(Field, @splat(y_start));
 
-        const xs = Core.sequential(x_start);
-        const ys = Core.constant(y);
-
-        // Evaluate the manifold function
-        // func(ctx, x, y) -> (r, g, b, a)
         const rgba = func(ctx, xs, ys);
-
         const packed_pixels = Core.pack_rgba(rgba.r, rgba.g, rgba.b, rgba.a);
-
-        // Store to output
-        const slice: *[LANES]u32 = @ptrCast(out[i .. i + LANES]);
-        slice.* = packed_pixels;
-
-        x_start += @floatFromInt(LANES);
+        
+        if (i + LANES <= out.len) {
+            // Full vector store
+            const slice: *[LANES]u32 = @ptrCast(out[i..i+LANES]);
+            slice.* = packed_pixels;
+            i += LANES;
+        } else {
+            // Tail handling
+            const remaining = out.len - i;
+            var temp_buf: [LANES]u32 = packed_pixels;
+            // Copy remaining
+            for (0..remaining) |j| {
+                out[i + j] = temp_buf[j];
+            }
+            break;
+        }
     }
 }
