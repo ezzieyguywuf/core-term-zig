@@ -41,8 +41,8 @@ pub const GlyphLoader = struct {
 
         if (len == 0) {
             return GlyphGeometry{
-                .lines = LineList.init(self.allocator),
-                .quads = QuadList.init(self.allocator),
+                .lines = try LineList.initCapacity(self.allocator, 0),
+                .quads = try QuadList.initCapacity(self.allocator, 0),
                 .x_min = 0, .y_min = 0, .x_max = 0, .y_max = 0,
             };
         }
@@ -57,8 +57,8 @@ pub const GlyphLoader = struct {
         const y_max = try r.readI16();
 
         var geom = GlyphGeometry{
-            .lines = LineList.init(self.allocator),
-            .quads = QuadList.init(self.allocator),
+            .lines = try LineList.initCapacity(self.allocator, 0),
+            .quads = try QuadList.initCapacity(self.allocator, 0),
             .x_min = x_min, .y_min = y_min, .x_max = x_max, .y_max = y_max,
         };
 
