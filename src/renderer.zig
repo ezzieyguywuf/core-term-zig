@@ -56,6 +56,8 @@ const CellRenderContext = struct {
     scaled_y_max: f32,
     scaled_ascent: f32,
     scaled_descent: f32,
+    draw_x_start: f32,
+    draw_y_start: f32,
 };
 
 const CellEvaluator = struct {
@@ -80,8 +82,8 @@ const CellEvaluator = struct {
         var final_g_arr: [pf.LANES]f32 = bg_g_arr;
         var final_b_arr: [pf.LANES]f32 = bg_b_arr;
 
-        const local_x_arr: [pf.LANES]f32 = @as([pf.LANES]f32, x_p - pf.Core.constant(x_p[0])); // x_p[0] is x_start
-        const local_y_arr: [pf.LANES]f32 = @as([pf.LANES]f32, y_p - pf.Core.constant(y_p[0])); // y_p[0] is y_start
+        const local_x_arr: [pf.LANES]f32 = @as([pf.LANES]f32, x_p - pf.Core.constant(c.draw_x_start));
+        const local_y_arr: [pf.LANES]f32 = @as([pf.LANES]f32, y_p - pf.Core.constant(c.draw_y_start));
 
         for (0..pf.LANES) |lane_idx| {
             const lx_scalar = local_x_arr[lane_idx];
@@ -195,10 +197,18 @@ fn draw_terminal_slice(ctx: TerminalContext, width_px: usize, out_slice: []u32, 
                     bg_color_val = temp_c;
                 }
 
+                // Calculate actual drawing offsets for the glyph bitmap
+                // Horizontally: center the glyph within its CHAR_WIDTH space, plus its x_min
+                const glyph_x_offset_in_cell = glyph.scaled_x_min + (CHAR_WIDTH - @as(f32, @floatFromInt(glyph.width))) / 2.0;
+                const draw_x_start = pixel_x_start + glyph_x_offset_in_cell;
+
+                // Vertically: Align baseline. Bitmap y=0 is glyph.y_max.
+                const draw_y_start = pixel_y_start + glyph.scaled_ascent - glyph.scaled_y_max;
+
                 const cell_ctx = CellRenderContext{
                     .fg_r = @as(f32, @floatFromInt(fg_color_val.r)) / 255.0,
                     .fg_g = @as(f32, @floatFromInt(fg_color_val.g)) / 255.0,
-                    .fg_b = @as(f32, @floatFromInt(bg_color_val.b)) / 255.0,
+                    .fg_b = @as(f32, @floatFromInt(fg_color_val.b)) / 255.0,
                     .bg_r = @as(f32, @floatFromInt(bg_color_val.r)) / 255.0,
                     .bg_g = @as(f32, @floatFromInt(bg_color_val.g)) / 255.0,
                     .bg_b = @as(f32, @floatFromInt(bg_color_val.b)) / 255.0,
@@ -211,17 +221,9 @@ fn draw_terminal_slice(ctx: TerminalContext, width_px: usize, out_slice: []u32, 
                     .scaled_y_max = glyph.scaled_y_max,
                     .scaled_ascent = glyph.scaled_ascent,
                     .scaled_descent = glyph.scaled_descent,
+                    .draw_x_start = draw_x_start,
+                    .draw_y_start = draw_y_start,
                 };
-
-                // Calculate actual drawing offsets for the glyph bitmap
-                // Horizontally: center the glyph within its CHAR_WIDTH space, plus its x_min
-                const glyph_x_offset_in_cell = cell_ctx.scaled_x_min + (CHAR_WIDTH - @as(f32, @floatFromInt(cell_ctx.glyph_width))) / 2.0;
-                const draw_x_start = pixel_x_start + glyph_x_offset_in_cell;
-
-                // Vertically: Align baseline. Bitmap y=0 is glyph.y_max.
-                // Baseline is at cell_top_y + scaled_ascent.
-                // Glyph bitmap origin (y=0) is at glyph.y_max. So place it at (baseline - glyph.y_max).
-                const draw_y_start = pixel_y_start + cell_ctx.scaled_ascent - cell_ctx.scaled_y_max; // Or maybe glyph.scaled_descent?
 
                 const char_height_usize: usize = @as(usize, @intFromFloat(CHAR_HEIGHT));
                 const char_width_usize: usize = @as(usize, @intFromFloat(CHAR_WIDTH));
@@ -235,7 +237,7 @@ fn draw_terminal_slice(ctx: TerminalContext, width_px: usize, out_slice: []u32, 
                     
                     if (current_row_start_idx + char_width_usize <= out_slice.len) {
                         const pixel_slice = out_slice[current_row_start_idx .. current_row_start_idx + char_width_usize];
-                        pf.evaluate(CellEvaluator.eval, cell_ctx, draw_x_start, draw_y_start, pixel_slice);
+                        pf.evaluate(CellEvaluator.eval, cell_ctx, pixel_x_start, current_pixel_y_global, pixel_slice);
                     }
                 }
             }
