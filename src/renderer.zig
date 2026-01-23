@@ -95,12 +95,15 @@ const CellEvaluator = struct {
                     
                 const alpha = c.glyph_bitmap[tex_y * c.glyph_width + tex_x];
                 if (alpha > 0) {
-                    const a = @as(f32, @floatFromInt(alpha)) / 255.0;
-                    // Blend
-                    // out = fg * a + bg * (1-a)
-                    final_r_arr[lane_idx] = fg_r_arr[lane_idx] * a + bg_r_arr[lane_idx] * (1.0 - a);
-                    final_g_arr[lane_idx] = fg_g_arr[lane_idx] * a + bg_g_arr[lane_idx] * (1.0 - a);
-                    final_b_arr[lane_idx] = fg_b_arr[lane_idx] * a + bg_b_arr[lane_idx] * (1.0 - a);
+                    // Debug: Red for glyph pixels
+                    final_r_arr[lane_idx] = 1.0;
+                    final_g_arr[lane_idx] = 0.0;
+                    final_b_arr[lane_idx] = 0.0;
+                } else {
+                    // Debug: Green for bounding box background
+                    final_r_arr[lane_idx] = 0.0;
+                    final_g_arr[lane_idx] = 1.0;
+                    final_b_arr[lane_idx] = 0.0;
                 }
             }
         }
