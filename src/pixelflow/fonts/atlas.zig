@@ -81,6 +81,8 @@ pub const Atlas = struct {
         const scaled_ascent = @as(f32, @floatFromInt(self.font.ascent)) * scale;
         const scaled_descent = @as(f32, @floatFromInt(self.font.descent)) * scale;
 
+        std.debug.print("Font Metrics: ascent={d}, descent={d}, units_per_em={d}, scale={d}\n", .{self.font.ascent, self.font.descent, self.font.units_per_em, scale});
+
         // Debug: ASCII Dump for 'e'
         if (codepoint == 101) {
             std.debug.print("Rasterized 'e': width={d} height={d} x_min={d} y_max={d} ascent={d} descent={d}\n", .{width, height, x_min, y_max, scaled_ascent, scaled_descent});
