@@ -215,7 +215,7 @@ fn draw_terminal_slice(ctx: TerminalContext, width_px: usize, out_slice: []u32, 
 
                 // Calculate actual drawing offsets for the glyph bitmap
                 // Horizontally: center the glyph within its CHAR_WIDTH space, plus its x_min
-                const glyph_x_offset_in_cell = cell_ctx.scaled_x_min + (CHAR_WIDTH - cell_ctx.glyph_width) / 2.0;
+                const glyph_x_offset_in_cell = cell_ctx.scaled_x_min + (CHAR_WIDTH - @as(f32, @floatFromInt(cell_ctx.glyph_width))) / 2.0;
                 const draw_x_start = pixel_x_start + glyph_x_offset_in_cell;
 
                 // Vertically: Align baseline. Bitmap y=0 is glyph.y_max.
