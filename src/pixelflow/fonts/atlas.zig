@@ -13,8 +13,10 @@ pub const CachedGlyph = struct {
     bitmap: []u8,
     width: usize,
     height: usize,
-    bearing_x: i32,
-    bearing_y: i32,
+    scaled_x_min: f32,
+    scaled_y_max: f32,
+    scaled_ascent: f32,
+    scaled_descent: f32,
     advance: f32,
 };
 
@@ -76,45 +78,12 @@ pub const Atlas = struct {
         var bitmap = try self.allocator.alloc(u8, width * height);
         @memset(bitmap, 0);
 
-        // Rasterizer Loop
-        for (0..height) |iy| {
-            for (0..width) |ix| {
-                // Pixel center in bitmap coords
-                const px = @as(f32, @floatFromInt(ix)) + 0.5;
-                const py = @as(f32, @floatFromInt(iy)) + 0.5;
-
-                // Map to Font Space
-                // x_world = (px + offset_x) / scale
-                // y_world = (py + offset_y) / scale
-                
-                const font_x = @as(f32, @floatFromInt(geom.x_min)) + px / scale;
-                const font_y = @as(f32, @floatFromInt(geom.y_max)) - py / scale;
-                
-                // Broadcast to SIMD
-                const vx = pf.Core.constant(font_x);
-                const vy = pf.Core.constant(font_y);
-                
-                var total: pf.Field = @splat(0.0);
-                
-                for (geom.lines.items) |l| {
-                    total += l.eval(vx, vy);
-                }
-                for (geom.quads.items) |q| {
-                    total += q.eval(vx, vy);
-                }
-                
-                // Extract scalar (lane 0)
-                const val = total[0];
-                const coverage = @min(1.0, @abs(val));
-                const alpha = @as(u8, @intFromFloat(coverage * 255.0));
-                
-                bitmap[iy * width + ix] = alpha;
-            }
-        }
+        const scaled_ascent = @as(f32, @floatFromInt(self.font.ascent)) * scale;
+        const scaled_descent = @as(f32, @floatFromInt(self.font.descent)) * scale;
 
         // Debug: ASCII Dump for 'e'
         if (codepoint == 101) {
-            std.debug.print("Rasterized 'e': width={d} height={d} x_min={d} y_max={d}\n", .{width, height, x_min, y_max});
+            std.debug.print("Rasterized 'e': width={d} height={d} x_min={d} y_max={d} ascent={d} descent={d}\n", .{width, height, x_min, y_max, scaled_ascent, scaled_descent});
             for (0..height) |iy| {
                 for (0..width) |ix| {
                     const val = bitmap[iy * width + ix];
@@ -129,8 +98,10 @@ pub const Atlas = struct {
             .bitmap = bitmap,
             .width = width,
             .height = height,
-            .bearing_x = @intFromFloat(x_min),
-            .bearing_y = @intFromFloat(y_max), // Top bearing
+            .scaled_x_min = x_min,
+            .scaled_y_max = y_max,
+            .scaled_ascent = scaled_ascent,
+            .scaled_descent = scaled_descent,
             .advance = 0, // TODO: Read HMTX
         };
     }
@@ -150,8 +121,10 @@ pub const Atlas = struct {
             .bitmap = bitmap,
             .width = 1,
             .height = 1,
-            .bearing_x = 0,
-            .bearing_y = 0,
+            .scaled_x_min = 0.0,
+            .scaled_y_max = 0.0,
+            .scaled_ascent = 0.0,
+            .scaled_descent = 0.0,
             .advance = 0,
         };
     }
