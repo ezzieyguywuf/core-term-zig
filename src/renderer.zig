@@ -66,13 +66,17 @@ const CellEvaluator = struct {
         const bg_g_field = pf.Core.constant(c.bg_g);
         const bg_b_field = pf.Core.constant(c.bg_b);
 
+        const fg_r_field = pf.Core.constant(c.fg_r);
+        const fg_g_field = pf.Core.constant(c.fg_g);
+        const fg_b_field = pf.Core.constant(c.fg_b);
+
         const bg_r_arr: [pf.LANES]f32 = @as([pf.LANES]f32, bg_r_field);
         const bg_g_arr: [pf.LANES]f32 = @as([pf.LANES]f32, bg_g_field);
         const bg_b_arr: [pf.LANES]f32 = @as([pf.LANES]f32, bg_b_field);
-        
-        _ = c.fg_r;
-        _ = c.fg_g;
-        _ = c.fg_b;
+
+        const fg_r_arr: [pf.LANES]f32 = @as([pf.LANES]f32, fg_r_field);
+        const fg_g_arr: [pf.LANES]f32 = @as([pf.LANES]f32, fg_g_field);
+        const fg_b_arr: [pf.LANES]f32 = @as([pf.LANES]f32, fg_b_field);
 
         var final_r_arr: [pf.LANES]f32 = bg_r_arr;
         var final_g_arr: [pf.LANES]f32 = bg_g_arr;
@@ -89,17 +93,16 @@ const CellEvaluator = struct {
                 const tex_x = @as(usize, @intFromFloat(lx_scalar));
                 const tex_y = @as(usize, @intFromFloat(ly_scalar));
                     
-                const alpha = c.glyph_bitmap[tex_y * c.glyph_width + tex_x];
-                if (alpha > 0) {
-                    // Debug: Red for glyph pixels
-                    final_r_arr[lane_idx] = 1.0;
-                    final_g_arr[lane_idx] = 0.0;
-                    final_b_arr[lane_idx] = 0.0;
-                } else {
-                    // Debug: Green for bounding box background
-                    final_r_arr[lane_idx] = 0.0;
-                    final_g_arr[lane_idx] = 1.0;
-                    final_b_arr[lane_idx] = 0.0;
+                if (tex_x < c.glyph_width and tex_y < c.glyph_height) {
+                    const alpha = c.glyph_bitmap[tex_y * c.glyph_width + tex_x];
+                    if (alpha > 0) {
+                        const a = @as(f32, @floatFromInt(alpha)) / 255.0;
+                        // Blend
+                        // out = fg * a + bg * (1-a)
+                        final_r_arr[lane_idx] = fg_r_arr[lane_idx] * a + bg_r_arr[lane_idx] * (1.0 - a);
+                        final_g_arr[lane_idx] = fg_g_arr[lane_idx] * a + bg_g_arr[lane_idx] * (1.0 - a);
+                        final_b_arr[lane_idx] = fg_b_arr[lane_idx] * a + bg_b_arr[lane_idx] * (1.0 - a);
+                    }
                 }
             }
         }
@@ -204,8 +207,8 @@ fn draw_terminal_slice(ctx: TerminalContext, width_px: usize, out_slice: []u32, 
                 const glyph_x_offset_in_cell = glyph.scaled_x_min + (CHAR_WIDTH - @as(f32, @floatFromInt(glyph.width))) / 2.0;
                 const draw_x_start = pixel_x_start + glyph_x_offset_in_cell;
 
-                // Vertically: Align baseline. Bitmap y=0 is glyph.y_max.
-                const draw_y_start = pixel_y_start + glyph.scaled_ascent - glyph.scaled_y_max;
+                // Vertically: Center glyph within cell
+                const draw_y_start = pixel_y_start + (CHAR_HEIGHT - @as(f32, @floatFromInt(glyph.height))) / 2.0;
 
                 const cell_ctx = CellRenderContext{
                     .fg_r = @as(f32, @floatFromInt(fg_color_val.r)) / 255.0,
