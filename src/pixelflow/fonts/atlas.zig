@@ -83,6 +83,7 @@ pub const Atlas = struct {
 
         // Debug: ASCII Dump for 'e'
         if (codepoint == 101) {
+            std.debug.print("Atlas alloc 'e' ptr: {*}\n", .{bitmap.ptr});
             std.debug.print("Rasterized 'e': width={d} height={d} x_min={d} y_max={d} ascent={d} descent={d}\n", .{width, height, x_min, y_max, scaled_ascent, scaled_descent});
             for (0..height) |iy| {
                 for (0..width) |ix| {

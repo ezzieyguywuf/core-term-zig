@@ -94,13 +94,15 @@ const CellEvaluator = struct {
                 const tex_y = @as(usize, @intFromFloat(ly_scalar));
                     
                 const alpha = c.glyph_bitmap[tex_y * c.glyph_width + tex_x];
-                if (alpha > 0) {
-                    const a = @as(f32, @floatFromInt(alpha)) / 255.0;
-                    // Blend
-                    // out = fg * a + bg * (1-a)
-                    final_r_arr[lane_idx] = fg_r_arr[lane_idx] * a + bg_r_arr[lane_idx] * (1.0 - a);
-                    final_g_arr[lane_idx] = fg_g_arr[lane_idx] * a + bg_g_arr[lane_idx] * (1.0 - a);
-                    final_b_arr[lane_idx] = fg_b_arr[lane_idx] * a + bg_b_arr[lane_idx] * (1.0 - a);
+                
+                // Debug: Render Alpha as Green
+                final_r_arr[lane_idx] = 0.0;
+                final_g_arr[lane_idx] = @as(f32, @floatFromInt(alpha)) / 255.0;
+                final_b_arr[lane_idx] = 0.0;
+
+                // Debug: Blue stripe at tex_x == 5 (middle of 'e')
+                if (tex_x == 5) {
+                     final_b_arr[lane_idx] = 1.0;
                 }
             }
         }
@@ -184,6 +186,9 @@ fn draw_terminal_slice(ctx: TerminalContext, width_px: usize, out_slice: []u32, 
             const glyph_ptr = ctx.atlas.cache.getPtr(atlas_mod.GlyphKey{ .codepoint = cell.character, .size = FONT_SIZE });
             
             if (glyph_ptr) |glyph| {
+                if (cell.character == 101) {
+                     std.debug.print("Render use 'e' ptr: {*}\n", .{glyph.bitmap.ptr});
+                }
                 const is_cursor_cell = col_idx == ctx.cursor_x and row_idx == ctx.cursor_y;
 
                 var fg_color_val = cell.fg_color;
