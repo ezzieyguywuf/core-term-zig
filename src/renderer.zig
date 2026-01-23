@@ -66,12 +66,6 @@ const CellEvaluator = struct {
         const bg_g_field = pf.Core.constant(c.bg_g);
         const bg_b_field = pf.Core.constant(c.bg_b);
 
-        /*
-        const fg_r_field = pf.Core.constant(c.fg_r);
-        const fg_g_field = pf.Core.constant(c.fg_g);
-        const fg_b_field = pf.Core.constant(c.fg_b);
-        */
-
         const bg_r_arr: [pf.LANES]f32 = @as([pf.LANES]f32, bg_r_field);
         const bg_g_arr: [pf.LANES]f32 = @as([pf.LANES]f32, bg_g_field);
         const bg_b_arr: [pf.LANES]f32 = @as([pf.LANES]f32, bg_b_field);
