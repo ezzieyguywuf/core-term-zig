@@ -186,9 +186,6 @@ fn draw_terminal_slice(ctx: TerminalContext, width_px: usize, out_slice: []u32, 
             const glyph_ptr = ctx.atlas.cache.getPtr(atlas_mod.GlyphKey{ .codepoint = cell.character, .size = FONT_SIZE });
             
             if (glyph_ptr) |glyph| {
-                if (cell.character == 101) {
-                     std.debug.print("'e' metrics: ascent={d}, y_max={d}\n", .{glyph.scaled_ascent, glyph.scaled_y_max});
-                }
                 const is_cursor_cell = col_idx == ctx.cursor_x and row_idx == ctx.cursor_y;
 
                 var fg_color_val = cell.fg_color;
