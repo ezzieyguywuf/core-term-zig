@@ -62,6 +62,10 @@ const CellRenderContext = struct {
 
 const CellEvaluator = struct {
     pub fn eval(c: CellRenderContext, x_p: pf.Field, y_p: pf.Field) struct { r: pf.Field, g: pf.Field, b: pf.Field, a: pf.Field } {
+        const bg_r_field = pf.Core.constant(c.bg_r);
+        const bg_g_field = pf.Core.constant(c.bg_g);
+        const bg_b_field = pf.Core.constant(c.bg_b);
+
         const bg_r_arr: [pf.LANES]f32 = @as([pf.LANES]f32, bg_r_field);
         const bg_g_arr: [pf.LANES]f32 = @as([pf.LANES]f32, bg_g_field);
         const bg_b_arr: [pf.LANES]f32 = @as([pf.LANES]f32, bg_b_field);
